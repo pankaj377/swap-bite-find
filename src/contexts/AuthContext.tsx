@@ -4,8 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
+interface UserWithMetadata extends User {
+  name?: string;
+  avatar?: string;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: UserWithMetadata | null;
   session: Session | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -16,16 +21,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserWithMetadata | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const enrichUserWithMetadata = (currentUser: User | null): UserWithMetadata | null => {
+    if (!currentUser) return null;
+    
+    return {
+      ...currentUser,
+      name: currentUser.user_metadata?.name || 'User',
+      avatar: currentUser.user_metadata?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.user_metadata?.name || 'User')}&background=random`
+    };
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        setUser(enrichUserWithMetadata(session?.user ?? null));
         
         // Event based handling
         if (event === 'SIGNED_IN') {
@@ -39,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      setUser(enrichUserWithMetadata(session?.user ?? null));
       setLoading(false);
     });
 
@@ -48,8 +63,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
+      // Enrich user with metadata after successful login
+      setUser(enrichUserWithMetadata(data.user));
+      
     } catch (error: any) {
       console.error('Error logging in:', error);
       toast.error(error.message || 'Failed to log in');
@@ -99,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       signup
     }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
