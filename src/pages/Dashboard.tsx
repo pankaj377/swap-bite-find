@@ -10,60 +10,108 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AuthModal } from '@/components/AuthModal';
 import { FoodMap } from '@/components/FoodMap';
 import { FoodCard } from '@/components/FoodCard';
+import { AddFoodModal } from '@/components/AddFoodModal';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Mock data for food listings
-const mockFoodItems = [
-  {
-    id: '1',
-    title: 'Fresh Tomatoes',
-    description: 'Organic tomatoes from my garden, perfect for salads',
-    image: 'https://images.unsplash.com/photo-1546470427-e75e37c79c2b?w=400&h=300&fit=crop',
-    category: 'vegetables',
-    location: { lat: 40.7128, lng: -74.0060, address: '0.2 miles away' },
-    user: { name: 'Sarah', avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612c719?w=32&h=32&fit=crop&crop=face' },
-    postedAt: '2 hours ago',
-    likes: 12,
-    isLiked: false
-  },
-  {
-    id: '2',
-    title: 'Homemade Bread',
-    description: 'Freshly baked sourdough bread, still warm',
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-    category: 'baked',
-    location: { lat: 40.7589, lng: -73.9851, address: '0.5 miles away' },
-    user: { name: 'Mike', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face' },
-    postedAt: '4 hours ago',
-    likes: 8,
-    isLiked: true
-  },
-  {
-    id: '3',
-    title: 'Apple Pie',
-    description: 'Homemade apple pie, perfect for dessert',
-    image: 'https://images.unsplash.com/photo-1535920527002-b35e96722da9?w=400&h=300&fit=crop',
-    category: 'desserts',
-    location: { lat: 40.7589, lng: -73.9851, address: '0.8 miles away' },
-    user: { name: 'Emma', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=32&h=32&fit=crop&crop=face' },
-    postedAt: '1 day ago',
-    likes: 15,
-    isLiked: false
-  }
-];
+interface FoodItem {
+  id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  category: string;
+  location_lat: number;
+  location_lng: number;
+  location_address: string;
+  user_id: string;
+  created_at: string;
+  is_available: boolean;
+  likes?: number;
+  isLiked?: boolean;
+  user?: { name: string; avatar: string };
+  postedAt?: string;
+}
 
 const Dashboard = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAddFoodModal, setShowAddFoodModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
-  const [foodItems, setFoodItems] = useState(mockFoodItems);
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    fetchFoodItems();
+  }, []);
+
+  const fetchFoodItems = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('food_items')
+        .select('*')
+        .eq('is_available', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      // Transform data to match our component expectations
+      const transformedData = data.map((item: any) => ({
+        ...item,
+        image: item.image_url,
+        likes: Math.floor(Math.random() * 20), // Mock data for likes
+        isLiked: false,
+        postedAt: formatTimeAgo(new Date(item.created_at)),
+        user: {
+          name: 'Food Sharer', // We would fetch this from a profiles table in a real app
+          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face'
+        },
+        location: {
+          lat: item.location_lat,
+          lng: item.location_lng,
+          address: item.location_address
+        }
+      }));
+
+      setFoodItems(transformedData);
+    } catch (error: any) {
+      console.error('Error fetching food items:', error);
+      toast.error('Failed to load food items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    
+    let interval = Math.floor(seconds / 31536000);
+    if (interval >= 1) return interval + ' year' + (interval === 1 ? '' : 's') + ' ago';
+    
+    interval = Math.floor(seconds / 2592000);
+    if (interval >= 1) return interval + ' month' + (interval === 1 ? '' : 's') + ' ago';
+    
+    interval = Math.floor(seconds / 86400);
+    if (interval >= 1) return interval + ' day' + (interval === 1 ? '' : 's') + ' ago';
+    
+    interval = Math.floor(seconds / 3600);
+    if (interval >= 1) return interval + ' hour' + (interval === 1 ? '' : 's') + ' ago';
+    
+    interval = Math.floor(seconds / 60);
+    if (interval >= 1) return interval + ' minute' + (interval === 1 ? '' : 's') + ' ago';
+    
+    return Math.floor(seconds) + ' second' + (seconds === 1 ? '' : 's') + ' ago';
+  };
 
   const categories = [
     { id: 'all', name: 'All', color: 'bg-gray-100 text-gray-800' },
@@ -85,7 +133,7 @@ const Dashboard = () => {
     setFoodItems(items =>
       items.map(item =>
         item.id === itemId
-          ? { ...item, isLiked: !item.isLiked, likes: item.isLiked ? item.likes - 1 : item.likes + 1 }
+          ? { ...item, isLiked: !item.isLiked, likes: item.isLiked ? (item.likes || 0) - 1 : (item.likes || 0) + 1 }
           : item
       )
     );
@@ -113,7 +161,10 @@ const Dashboard = () => {
               <p className="text-gray-600 dark:text-gray-300 mt-1">Discover and share fresh food in your neighborhood</p>
             </div>
             
-            <Button className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg">
+            <Button 
+              onClick={() => setShowAddFoodModal(true)}
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Share Food
             </Button>
@@ -167,31 +218,92 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Content */}
-          {viewMode === 'map' ? (
-            <div className="h-[600px] rounded-2xl overflow-hidden shadow-lg">
-              <FoodMap items={filteredItems} />
+          {/* Loading state */}
+          {loading && (
+            <div className="flex justify-center my-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
             </div>
-          ) : (
+          )}
+
+          {/* Content */}
+          {!loading && viewMode === 'map' && (
+            <div className="h-[600px] rounded-2xl overflow-hidden shadow-lg">
+              <FoodMap items={filteredItems.map(item => ({
+                id: item.id,
+                title: item.title,
+                description: item.description,
+                image: item.image_url,
+                category: item.category,
+                location: {
+                  lat: item.location_lat,
+                  lng: item.location_lng,
+                  address: item.location_address
+                },
+                user: item.user || {
+                  name: 'User',
+                  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face'
+                },
+                postedAt: item.postedAt || '1 hour ago',
+                likes: item.likes || 0,
+                isLiked: item.isLiked || false
+              }))} />
+            </div>
+          )}
+
+          {!loading && viewMode === 'grid' && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredItems.map(item => (
                 <FoodCard
                   key={item.id}
-                  item={item}
+                  item={{
+                    id: item.id,
+                    title: item.title,
+                    description: item.description,
+                    image: item.image_url,
+                    category: item.category,
+                    location: {
+                      lat: item.location_lat,
+                      lng: item.location_lng,
+                      address: item.location_address
+                    },
+                    user: item.user || {
+                      name: 'User',
+                      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face'
+                    },
+                    postedAt: item.postedAt || '1 hour ago',
+                    likes: item.likes || 0,
+                    isLiked: item.isLiked || false
+                  }}
                   onLike={handleLike}
                 />
               ))}
             </div>
           )}
 
-          {filteredItems.length === 0 && (
+          {!loading && filteredItems.length === 0 && (
             <div className="text-center py-12">
               <div className="text-gray-400 text-lg mb-4">No food items found</div>
               <p className="text-gray-600 dark:text-gray-400">Try adjusting your search or filters</p>
+              {selectedCategory !== 'all' && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSelectedCategory('all')} 
+                  className="mt-4"
+                >
+                  Clear filters
+                </Button>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Add Food Modal */}
+      <AddFoodModal 
+        open={showAddFoodModal} 
+        onOpenChange={setShowAddFoodModal} 
+        onFoodAdded={fetchFoodItems}
+      />
     </div>
   );
 };
