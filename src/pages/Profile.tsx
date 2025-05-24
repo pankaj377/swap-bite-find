@@ -1,11 +1,9 @@
 
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { MapPin, Calendar } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 
 const Profile = () => {
@@ -27,9 +25,9 @@ const Profile = () => {
   };
 
   const recentActivity = [
-    { id: 1, type: 'shared', item: 'Fresh Tomatoes', date: '2 hours ago', image: 'https://images.unsplash.com/photo-1546470427-e75e37c79c2b?w=100&h=100&fit=crop' },
-    { id: 2, type: 'received', item: 'Homemade Bread', date: '1 day ago', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100&h=100&fit=crop' },
-    { id: 3, type: 'shared', item: 'Apple Pie', date: '3 days ago', image: 'https://images.unsplash.com/photo-1535920527002-b35e96722da9?w=100&h=100&fit=crop' }
+    { id: 1, type: 'shared' as const, item: 'Fresh Tomatoes', date: '2 hours ago', image: 'https://images.unsplash.com/photo-1546470427-e75e37c79c2b?w=100&h=100&fit=crop' },
+    { id: 2, type: 'received' as const, item: 'Homemade Bread', date: '1 day ago', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100&h=100&fit=crop' },
+    { id: 3, type: 'shared' as const, item: 'Apple Pie', date: '3 days ago', image: 'https://images.unsplash.com/photo-1535920527002-b35e96722da9?w=100&h=100&fit=crop' }
   ];
 
   const handleSave = () => {
