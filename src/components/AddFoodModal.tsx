@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Camera, Upload, X } from 'lucide-react';
 
 interface AddFoodModalProps {
   open: boolean;
@@ -35,6 +36,9 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
   const [foodData, setFoodData] = useState({
     title: '',
     description: '',
@@ -54,6 +58,73 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
     setFoodData(prev => ({ ...prev, category: value }));
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+
+      setSelectedFile(file);
+      
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const removePhoto = () => {
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl('');
+    }
+    // Reset to default image
+    setFoodData(prev => ({ 
+      ...prev, 
+      image_url: 'https://images.unsplash.com/photo-1546470427-e75e37c79c2b?w=400&h=300&fit=crop' 
+    }));
+  };
+
+  const uploadPhoto = async (): Promise<string | null> => {
+    if (!selectedFile || !user) return null;
+
+    setUploadingPhoto(true);
+    try {
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('food-photos')
+        .upload(fileName, selectedFile);
+
+      if (error) {
+        throw error;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('food-photos')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+      return null;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -70,15 +141,22 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
     setLoading(true);
 
     try {
-      // Mock location data for now - in a real app, we would use browser geolocation
-      // or a map picker component to get the actual coordinates
+      let imageUrl = foodData.image_url;
+
+      // Upload photo if user selected one
+      if (selectedFile) {
+        const uploadedUrl = await uploadPhoto();
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+      }
 
       const { error } = await supabase.from('food_items').insert({
         user_id: user.id,
         title: foodData.title,
         description: foodData.description,
         category: foodData.category,
-        image_url: foodData.image_url,
+        image_url: imageUrl,
         location_lat: foodData.location_lat,
         location_lng: foodData.location_lng,
         location_address: foodData.location_address,
@@ -91,6 +169,8 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
       toast.success("Food item shared successfully!");
       onFoodAdded();
       onOpenChange(false);
+      
+      // Reset form
       setFoodData({
         title: '',
         description: '',
@@ -100,6 +180,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         location_lng: -74.0060,
         location_address: 'Near your location',
       });
+      removePhoto();
     } catch (error: any) {
       console.error("Error sharing food item:", error);
       toast.error(error.message || "Failed to share food item");
@@ -118,7 +199,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Share Food Item</DialogTitle>
           <DialogDescription>
@@ -127,6 +208,55 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          {/* Photo Upload Section */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Food Photo</label>
+            
+            {previewUrl ? (
+              <div className="relative">
+                <img 
+                  src={previewUrl} 
+                  alt="Food preview" 
+                  className="w-full h-32 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="absolute top-2 right-2"
+                  onClick={removePhoto}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <div className="text-center">
+                  <Camera className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600 mb-2">Add a photo of your food</p>
+                  <label htmlFor="photo-upload" className="cursor-pointer">
+                    <Button type="button" variant="outline" size="sm" asChild>
+                      <span>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Choose Photo
+                      </span>
+                    </Button>
+                  </label>
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Max 5MB • JPG, PNG, or WebP
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="title" className="text-sm font-medium">
               Food Title *
@@ -197,12 +327,12 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              disabled={loading}
+              disabled={loading || uploadingPhoto}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Sharing...' : 'Share Food'}
+            <Button type="submit" disabled={loading || uploadingPhoto}>
+              {loading ? 'Sharing...' : uploadingPhoto ? 'Uploading...' : 'Share Food'}
             </Button>
           </DialogFooter>
         </form>
