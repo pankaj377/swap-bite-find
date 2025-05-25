@@ -50,56 +50,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
-        setSession(session);
-        setUser(enrichUserWithMetadata(session?.user ?? null));
+      async (event, session) => {
+        if (!mounted) return;
         
-        // Event based handling
-        if (event === 'SIGNED_IN') {
-          console.log('User signed in:', session?.user?.email);
-          // Force page reload for clean state
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 100);
+        console.log('Auth state change:', event, session?.user?.id);
+        
+        if (event === 'SIGNED_IN' && session) {
+          setSession(session);
+          setUser(enrichUserWithMetadata(session.user));
+          console.log('User signed in:', session.user.email);
+          
+          // Only redirect on successful login, not on page refresh
+          if (window.location.pathname === '/' || window.location.pathname.includes('auth')) {
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 100);
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out');
           setUser(null);
           setSession(null);
+          // Don't auto-redirect on sign out, let the logout function handle it
+        } else if (event === 'INITIAL_SESSION') {
+          setSession(session);
+          setUser(enrichUserWithMetadata(session?.user ?? null));
         }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Existing session:', session?.user?.id);
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error('Error getting session:', error);
+        cleanupAuthState();
+      }
+      
+      console.log('Initial session check:', session?.user?.id);
       setSession(session);
       setUser(enrichUserWithMetadata(session?.user ?? null));
       setLoading(false);
-    }).catch((error) => {
-      console.error('Error getting session:', error);
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       console.log('Attempting login for:', email);
       
-      // Clean up existing state
+      // Clean up existing state first
       cleanupAuthState();
       
-      // Attempt global sign out first
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        console.log('Sign out during login failed (expected):', err);
-      }
-
       const { error, data } = await supabase.auth.signInWithPassword({ 
         email: email.trim(), 
         password 
@@ -111,8 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('Login successful:', data.user?.email);
-      
-      // Don't set user here, let the auth state change handler do it
       toast.success('Successfully logged in!');
       
     } catch (error: any) {
@@ -134,10 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Attempting logout');
       
-      // Clean up auth state
+      // Clean up auth state first
       cleanupAuthState();
       
-      // Attempt global sign out
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) {
         console.error('Logout error:', error);
