@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -270,6 +269,7 @@ const Dashboard = () => {
                       name: 'User',
                       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face'
                     },
+                    user_id: item.user_id,
                     postedAt: item.postedAt || '1 hour ago',
                     likes: item.likes || 0,
                     isLiked: item.isLiked || false

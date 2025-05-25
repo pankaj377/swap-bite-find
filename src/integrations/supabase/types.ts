@@ -9,6 +9,41 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          created_at: string
+          food_request_id: string | null
+          id: string
+          participant_1_id: string
+          participant_2_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          food_request_id?: string | null
+          id?: string
+          participant_1_id: string
+          participant_2_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          food_request_id?: string | null
+          id?: string
+          participant_1_id?: string
+          participant_2_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_food_request_id_fkey"
+            columns: ["food_request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       food_items: {
         Row: {
           category: string
@@ -51,6 +86,106 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      food_requests: {
+        Row: {
+          created_at: string
+          food_item_id: string
+          id: string
+          message: string | null
+          owner_id: string
+          requester_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          food_item_id: string
+          id?: string
+          message?: string | null
+          owner_id: string
+          requester_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          food_item_id?: string
+          id?: string
+          message?: string | null
+          owner_id?: string
+          requester_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_requests_food_item_id_fkey"
+            columns: ["food_item_id"]
+            isOneToOne: false
+            referencedRelation: "food_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
         }
         Relationships: []
       }
