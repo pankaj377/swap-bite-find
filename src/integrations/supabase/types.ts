@@ -49,6 +49,7 @@ export type Database = {
           category: string
           created_at: string
           description: string
+          expire_date: string | null
           id: string
           image_url: string | null
           is_available: boolean
@@ -63,6 +64,7 @@ export type Database = {
           category: string
           created_at?: string
           description: string
+          expire_date?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -77,6 +79,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          expire_date?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -162,6 +165,36 @@ export type Database = {
           },
         ]
       }
+      otp_verifications: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          otp_code: string
+          phone_number: string
+          user_id: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          otp_code: string
+          phone_number: string
+          user_id?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          otp_code?: string
+          phone_number?: string
+          user_id?: string | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -169,6 +202,10 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          location_address: string | null
+          location_lat: number | null
+          location_lng: number | null
+          phone_number: string | null
           updated_at: string
         }
         Insert: {
@@ -177,6 +214,10 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          phone_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -185,6 +226,10 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          phone_number?: string | null
           updated_at?: string
         }
         Relationships: []

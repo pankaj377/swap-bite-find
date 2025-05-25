@@ -19,6 +19,7 @@ interface FoodItem {
   postedAt: string;
   likes: number;
   isLiked: boolean;
+  expire_date?: string;
 }
 
 interface FoodMapProps {
@@ -31,25 +32,56 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
+  const [nearbyItems, setNearbyItems] = useState<FoodItem[]>([]);
 
   // Get user location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation([position.coords.longitude, position.coords.latitude]);
+          const location: [number, number] = [position.coords.longitude, position.coords.latitude];
+          setUserLocation(location);
+          
+          // Filter items within 10km radius
+          const nearby = items.filter(item => {
+            const distance = calculateDistance(
+              position.coords.latitude,
+              position.coords.longitude,
+              item.location.lat,
+              item.location.lng
+            );
+            return distance <= 10; // 10km radius
+          });
+          
+          setNearbyItems(nearby);
+          toast.success(`Found ${nearby.length} food items within 10km`);
         },
         (error) => {
           console.log('Error getting location:', error);
           // Default to New York if location is denied
           setUserLocation([-74.0060, 40.7128]);
+          setNearbyItems(items);
         }
       );
     } else {
       // Default to New York if geolocation is not supported
       setUserLocation([-74.0060, 40.7128]);
+      setNearbyItems(items);
     }
-  }, []);
+  }, [items]);
+
+  // Calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   // Initialize map
   useEffect(() => {
@@ -79,13 +111,13 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
 
   // Add food item markers
   useEffect(() => {
-    if (!map.current || !items.length) return;
+    if (!map.current || !nearbyItems.length) return;
 
     // Clear existing markers
     const existingMarkers = document.querySelectorAll('.food-marker');
     existingMarkers.forEach(marker => marker.remove());
 
-    items.forEach((item) => {
+    nearbyItems.forEach((item) => {
       const markerEl = document.createElement('div');
       markerEl.className = 'food-marker';
       markerEl.style.width = '40px';
@@ -111,13 +143,18 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
 
       markerEl.style.backgroundColor = getCategoryColor(item.category);
 
+      const expiryInfo = item.expire_date 
+        ? `<div class="text-xs text-orange-600 mt-1">Expires: ${new Date(item.expire_date).toLocaleDateString()}</div>`
+        : '';
+
       const popup = new mapboxgl.Popup({ offset: 25 })
         .setHTML(`
           <div class="p-3 max-w-xs">
             <img src="${item.image}" alt="${item.title}" class="w-full h-32 object-cover rounded-lg mb-2" />
             <h3 class="font-semibold text-lg mb-1">${item.title}</h3>
             <p class="text-gray-600 text-sm mb-2">${item.description}</p>
-            <div class="flex items-center justify-between">
+            ${expiryInfo}
+            <div class="flex items-center justify-between mt-2">
               <span class="text-xs text-gray-500">${item.location.address}</span>
               <span class="text-xs text-gray-500">${item.postedAt}</span>
             </div>
@@ -135,7 +172,7 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
     });
 
     // Fit map to show all markers
-    if (items.length > 0) {
+    if (nearbyItems.length > 0) {
       const bounds = new mapboxgl.LngLatBounds();
       
       // Add user location to bounds
@@ -144,13 +181,13 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
       }
       
       // Add all food item locations to bounds
-      items.forEach(item => {
+      nearbyItems.forEach(item => {
         bounds.extend([item.location.lng, item.location.lat]);
       });
 
       map.current.fitBounds(bounds, { padding: 50 });
     }
-  }, [items, userLocation]);
+  }, [nearbyItems, userLocation]);
 
   const getDirections = (item: FoodItem) => {
     if (!userLocation) {
@@ -227,6 +264,11 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 truncate">{selectedItem.title}</h3>
                 <p className="text-sm text-gray-600 line-clamp-2">{selectedItem.description}</p>
+                {selectedItem.expire_date && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    Expires: {new Date(selectedItem.expire_date).toLocaleDateString()}
+                  </p>
+                )}
                 <div className="flex items-center space-x-2 mt-2">
                   <Badge className="text-xs">
                     {selectedItem.category}
@@ -262,8 +304,13 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
       <div className="absolute bottom-4 right-4 z-10">
         <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
           <p className="text-sm text-gray-600">
-            📍 {items.length} food items nearby
+            📍 {nearbyItems.length} food items nearby
           </p>
+          {userLocation && (
+            <p className="text-xs text-gray-500 mt-1">
+              Within 10km of your location
+            </p>
+          )}
         </div>
       </div>
     </div>
