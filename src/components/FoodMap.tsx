@@ -24,51 +24,36 @@ interface FoodItem {
 
 interface FoodMapProps {
   items: FoodItem[];
+  userLocation: {lat: number; lng: number} | null;
+  onItemClick: (item: FoodItem) => void;
 }
 
-export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
+export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemClick }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
   const [nearbyItems, setNearbyItems] = useState<FoodItem[]>([]);
 
-  // Get user location
+  // Filter items within 10km radius when userLocation or items change
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location: [number, number] = [position.coords.longitude, position.coords.latitude];
-          setUserLocation(location);
-          
-          // Filter items within 10km radius
-          const nearby = items.filter(item => {
-            const distance = calculateDistance(
-              position.coords.latitude,
-              position.coords.longitude,
-              item.location.lat,
-              item.location.lng
-            );
-            return distance <= 10; // 10km radius
-          });
-          
-          setNearbyItems(nearby);
-          toast.success(`Found ${nearby.length} food items within 10km`);
-        },
-        (error) => {
-          console.log('Error getting location:', error);
-          // Default to New York if location is denied
-          setUserLocation([-74.0060, 40.7128]);
-          setNearbyItems(items);
-        }
-      );
+    if (userLocation && items.length > 0) {
+      const nearby = items.filter(item => {
+        const distance = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          item.location.lat,
+          item.location.lng
+        );
+        return distance <= 10; // 10km radius
+      });
+      
+      setNearbyItems(nearby);
+      toast.success(`Found ${nearby.length} food items within 10km`);
     } else {
-      // Default to New York if geolocation is not supported
-      setUserLocation([-74.0060, 40.7128]);
       setNearbyItems(items);
     }
-  }, [items]);
+  }, [items, userLocation]);
 
   // Calculate distance between two coordinates (Haversine formula)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -87,10 +72,12 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
   useEffect(() => {
     if (!mapContainer.current || !userLocation || !mapboxToken) return;
 
+    const mapCenter: [number, number] = [userLocation.lng, userLocation.lat];
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: userLocation,
+      center: mapCenter,
       zoom: 12,
       accessToken: mapboxToken
     });
@@ -100,7 +87,7 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
 
     // Add user location marker
     new mapboxgl.Marker({ color: '#3b82f6' })
-      .setLngLat(userLocation)
+      .setLngLat(mapCenter)
       .setPopup(new mapboxgl.Popup().setHTML('<div class="text-center"><strong>Your Location</strong></div>'))
       .addTo(map.current);
 
@@ -168,17 +155,16 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
 
       markerEl.addEventListener('click', () => {
         setSelectedItem(item);
+        onItemClick(item);
       });
     });
 
     // Fit map to show all markers
-    if (nearbyItems.length > 0) {
+    if (nearbyItems.length > 0 && userLocation) {
       const bounds = new mapboxgl.LngLatBounds();
       
       // Add user location to bounds
-      if (userLocation) {
-        bounds.extend(userLocation);
-      }
+      bounds.extend([userLocation.lng, userLocation.lat]);
       
       // Add all food item locations to bounds
       nearbyItems.forEach(item => {
@@ -187,7 +173,7 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
 
       map.current.fitBounds(bounds, { padding: 50 });
     }
-  }, [nearbyItems, userLocation]);
+  }, [nearbyItems, userLocation, onItemClick]);
 
   const getDirections = (item: FoodItem) => {
     if (!userLocation) {
@@ -195,7 +181,7 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items }) => {
       return;
     }
 
-    const url = `https://www.google.com/maps/dir/${userLocation[1]},${userLocation[0]}/${item.location.lat},${item.location.lng}`;
+    const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${item.location.lat},${item.location.lng}`;
     window.open(url, '_blank');
   };
 
