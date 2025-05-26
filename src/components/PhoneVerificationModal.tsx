@@ -26,10 +26,17 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const [isResending, setIsResending] = useState(false);
 
   const sendOTP = async () => {
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      toast.error('Phone number is required');
+      return;
+    }
+
     setIsResending(true);
     try {
       // Generate a 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      console.log('Attempting to send OTP to:', phoneNumber);
       
       // Store OTP in database
       const { error } = await supabase
@@ -40,14 +47,17 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
           expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(`Failed to create OTP record: ${error.message}`);
+      }
 
       // In a real app, you would send SMS here
       console.log('OTP Code (for testing):', otpCode);
       toast.success(`OTP sent to ${phoneNumber} (Check console for demo)`);
     } catch (error: any) {
       console.error('Error sending OTP:', error);
-      toast.error('Failed to send OTP');
+      toast.error(`Failed to send OTP: ${error.message || 'Unknown error'}`);
     } finally {
       setIsResending(false);
     }
@@ -59,48 +69,73 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       return;
     }
 
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      toast.error('Phone number is missing');
+      return;
+    }
+
     setIsVerifying(true);
     try {
+      console.log('Verifying OTP:', otp, 'for phone:', phoneNumber);
+      
       const { data, error } = await supabase
         .from('otp_verifications')
         .select('*')
         .eq('phone_number', phoneNumber)
         .eq('otp_code', otp)
         .gt('expires_at', new Date().toISOString())
+        .eq('verified', false)
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error during verification:', error);
+        throw new Error(`Verification failed: ${error.message}`);
+      }
+
+      console.log('OTP verification result:', data);
 
       if (data && data.length > 0) {
         // Mark as verified
-        await supabase
+        const { error: updateError } = await supabase
           .from('otp_verifications')
           .update({ verified: true })
           .eq('id', data[0].id);
 
+        if (updateError) {
+          console.error('Error marking OTP as verified:', updateError);
+          throw new Error(`Failed to mark as verified: ${updateError.message}`);
+        }
+
         toast.success('Phone number verified successfully!');
         onVerified();
         onClose();
+        setOtp(''); // Clear OTP on success
       } else {
-        toast.error('Invalid or expired OTP');
+        toast.error('Invalid or expired OTP. Please try again.');
       }
     } catch (error: any) {
       console.error('Error verifying OTP:', error);
-      toast.error('Failed to verify OTP');
+      toast.error(`Failed to verify OTP: ${error.message || 'Unknown error'}`);
     } finally {
       setIsVerifying(false);
     }
   };
 
   React.useEffect(() => {
-    if (isOpen && phoneNumber) {
+    if (isOpen && phoneNumber && phoneNumber.trim() !== '') {
+      setOtp(''); // Clear any previous OTP
       sendOTP();
     }
   }, [isOpen, phoneNumber]);
 
+  const handleClose = () => {
+    setOtp(''); // Clear OTP when closing
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Verify Phone Number</DialogTitle>
@@ -140,6 +175,10 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
             >
               {isResending ? 'Sending...' : 'Resend'}
             </Button>
+          </div>
+          
+          <div className="text-xs text-gray-500 text-center">
+            For demo purposes, check the browser console for the OTP code.
           </div>
         </div>
       </DialogContent>
