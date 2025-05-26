@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,12 +56,6 @@ export const RequestsManagement = () => {
             description,
             image_url,
             category
-          ),
-          profiles!food_requests_requester_id_fkey (
-            id,
-            full_name,
-            avatar_url,
-            phone_number
           )
         `)
         .eq('food_items.user_id', user.id)
@@ -70,14 +63,38 @@ export const RequestsManagement = () => {
 
       if (error) throw error;
 
-      const formattedRequests = (data || []).map(request => ({
-        id: request.id,
-        message: request.message || '',
-        status: request.status || 'pending',
-        created_at: request.created_at,
-        food_item: request.food_items,
-        requester: request.profiles
-      }));
+      if (!data || data.length === 0) {
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get requester profiles separately
+      const requesterIds = data.map(request => request.requester_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, phone_number')
+        .in('id', requesterIds);
+
+      if (profilesError) throw profilesError;
+
+      const formattedRequests = data.map(request => {
+        const requesterProfile = profiles?.find(profile => profile.id === request.requester_id);
+        
+        return {
+          id: request.id,
+          message: request.message || '',
+          status: request.status || 'pending',
+          created_at: request.created_at,
+          food_item: request.food_items,
+          requester: {
+            id: request.requester_id,
+            full_name: requesterProfile?.full_name || 'Unknown User',
+            avatar_url: requesterProfile?.avatar_url || '',
+            phone_number: requesterProfile?.phone_number || ''
+          }
+        };
+      });
 
       setRequests(formattedRequests);
     } catch (error: any) {

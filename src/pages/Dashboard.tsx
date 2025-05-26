@@ -75,7 +75,17 @@ const Dashboard = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      setMyFoodItems(data || []);
+      
+      // For my own items, we don't need to fetch user profile since it's the current user
+      const itemsWithUser = (data || []).map(item => ({
+        ...item,
+        user: {
+          full_name: user.name || 'You',
+          avatar_url: user.avatar || ''
+        }
+      }));
+      
+      setMyFoodItems(itemsWithUser);
     } catch (error: any) {
       console.error('Error loading my food items:', error);
       toast.error('Failed to load your food items');
@@ -88,20 +98,40 @@ const Dashboard = () => {
     if (!user || !userLocation) return;
 
     try {
-      const { data, error } = await supabase
+      const { data: foodItems, error } = await supabase
         .from('food_items')
-        .select(`
-          *,
-          user:profiles (
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .neq('user_id', user.id);
 
       if (error) throw error;
 
-      setNearbyItems(data || []);
+      if (!foodItems || foodItems.length === 0) {
+        setNearbyItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get user profiles separately
+      const userIds = [...new Set(foodItems.map(item => item.user_id))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      const itemsWithUsers = foodItems.map(item => {
+        const userProfile = profiles?.find(profile => profile.id === item.user_id);
+        return {
+          ...item,
+          user: {
+            full_name: userProfile?.full_name || 'Unknown User',
+            avatar_url: userProfile?.avatar_url || ''
+          }
+        };
+      });
+
+      setNearbyItems(itemsWithUsers);
     } catch (error: any) {
       console.error('Error loading nearby food items:', error);
       toast.error('Failed to load nearby food items');
@@ -113,6 +143,27 @@ const Dashboard = () => {
   const handleLike = (itemId: string) => {
     console.log('Like item:', itemId);
   };
+
+  const convertToFoodCardFormat = (item: FoodItem) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    image: item.image_url || '/placeholder.svg',
+    category: item.category,
+    location: {
+      lat: item.location_lat,
+      lng: item.location_lng,
+      address: item.location_address
+    },
+    user: {
+      name: item.user.full_name,
+      avatar: item.user.avatar_url || '/placeholder.svg'
+    },
+    user_id: item.user_id,
+    postedAt: new Date(item.created_at).toLocaleDateString(),
+    likes: 0,
+    isLiked: false
+  });
 
   if (!user) {
     return (
@@ -181,26 +232,7 @@ const Dashboard = () => {
                   {nearbyItems.map(item => (
                     <FoodCard
                       key={item.id}
-                      item={{
-                        id: item.id,
-                        title: item.title,
-                        description: item.description,
-                        image: item.image_url || '/placeholder.svg',
-                        category: item.category,
-                        location: {
-                          lat: item.location_lat,
-                          lng: item.location_lng,
-                          address: item.location_address
-                        },
-                        user: {
-                          name: item.user.full_name,
-                          avatar: item.user.avatar_url || '/placeholder.svg'
-                        },
-                        user_id: item.user_id,
-                        postedAt: new Date(item.created_at).toLocaleDateString(),
-                        likes: 0,
-                        isLiked: false
-                      }}
+                      item={convertToFoodCardFormat(item)}
                       onLike={handleLike}
                     />
                   ))}
@@ -222,26 +254,7 @@ const Dashboard = () => {
                   {myFoodItems.map(item => (
                     <FoodCard
                       key={item.id}
-                      item={{
-                        id: item.id,
-                        title: item.title,
-                        description: item.description,
-                        image: item.image_url || '/placeholder.svg',
-                        category: item.category,
-                        location: {
-                          lat: item.location_lat,
-                          lng: item.location_lng,
-                          address: item.location_address
-                        },
-                        user: {
-                          name: item.user.full_name,
-                          avatar: item.user.avatar_url || '/placeholder.svg'
-                        },
-                        user_id: item.user_id,
-                        postedAt: new Date(item.created_at).toLocaleDateString(),
-                        likes: 0,
-                        isLiked: false
-                      }}
+                      item={convertToFoodCardFormat(item)}
                       onLike={handleLike}
                     />
                   ))}
@@ -267,7 +280,7 @@ const Dashboard = () => {
               <Card className="overflow-hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
                 <div className="h-96">
                   <FoodMap 
-                    items={nearbyItems}
+                    items={nearbyItems.map(convertToFoodCardFormat)}
                     userLocation={userLocation}
                     onItemClick={(item) => console.log('Item clicked:', item)}
                   />
