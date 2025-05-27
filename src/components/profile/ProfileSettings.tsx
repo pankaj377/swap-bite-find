@@ -54,57 +54,77 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       setUploading(true);
       
       if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
+        toast.error('Please select an image to upload');
+        return;
       }
 
       const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      // Create storage bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const avatarBucket = buckets?.find(bucket => bucket.name === 'avatars');
       
-      if (!avatarBucket) {
-        await supabase.storage.createBucket('avatars', {
-          public: true,
-          allowedMimeTypes: ['image/*']
-        });
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select a valid image file');
+        return;
       }
 
-      const { error: uploadError } = await supabase.storage
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+
+      if (!user?.id) {
+        toast.error('You must be logged in to upload an avatar');
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      console.log('Uploading file:', fileName);
+
+      const { error: uploadError, data } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          upsert: true
+        });
 
       if (uploadError) {
-        throw uploadError;
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      const { data } = supabase.storage
+      console.log('Upload successful:', data);
+
+      const { data: publicUrlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      setAvatarUrl(data.publicUrl);
+      console.log('Public URL:', publicUrlData.publicUrl);
+
+      setAvatarUrl(publicUrlData.publicUrl);
 
       // Update user profile with new avatar URL
-      if (user) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: data.publicUrl })
-          .eq('id', user.id);
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrlData.publicUrl })
+        .eq('id', user.id);
 
-        if (updateError) {
-          throw updateError;
-        }
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        throw new Error(`Profile update failed: ${updateError.message}`);
       }
 
       toast.success('Avatar updated successfully!');
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
-      toast.error('Error uploading avatar: ' + error.message);
+      toast.error(error.message || 'Error uploading avatar');
     } finally {
       setUploading(false);
+      // Clear the input so the same file can be selected again
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   };
   
@@ -120,7 +140,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             <div className="mt-2 flex items-center space-x-4">
               <div className="relative">
                 <img
-                  src={avatarUrl}
+                  src={avatarUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face'}
                   alt="Avatar"
                   className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
                 />
@@ -153,6 +173,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                   )}
                   <span>{uploading ? 'Uploading...' : 'Change Photo'}</span>
                 </Button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Max file size: 5MB. Supported formats: JPG, PNG, GIF, WebP
+                </p>
               </div>
             </div>
           </div>
