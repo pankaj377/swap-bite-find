@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { MapTokenSetup } from '@/components/map/MapTokenSetup';
 import { MapContainer } from '@/components/map/MapContainer';
 import { MapItemInfo } from '@/components/map/MapItemInfo';
 import { MapStats } from '@/components/map/MapStats';
@@ -29,7 +28,6 @@ interface FoodMapProps {
 
 export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemClick }) => {
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
   const [nearbyItems, setNearbyItems] = useState<FoodItem[]>([]);
 
   // Filter items within 10km radius when userLocation or items change
@@ -62,26 +60,17 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
     window.open(url, '_blank');
   };
 
-  const handleTokenSubmit = (token: string) => {
-    setMapboxToken(token);
-    localStorage.setItem('mapbox_token', token);
-  };
-
   const handleItemClick = (item: FoodItem) => {
     setSelectedItem(item);
     onItemClick(item);
   };
 
-  // Check for saved token
-  useEffect(() => {
-    const savedToken = localStorage.getItem('mapbox_token');
-    if (savedToken) {
-      setMapboxToken(savedToken);
-    }
-  }, []);
-
-  if (!mapboxToken) {
-    return <MapTokenSetup onTokenSubmit={handleTokenSubmit} />;
+  if (!userLocation) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-600">Please enable location services to view the map</p>
+      </div>
+    );
   }
 
   return (
@@ -89,7 +78,6 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
       <MapContainer
         items={nearbyItems}
         userLocation={userLocation}
-        mapboxToken={mapboxToken}
         onItemClick={handleItemClick}
       />
       

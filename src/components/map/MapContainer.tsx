@@ -1,8 +1,16 @@
 
 import React, { useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { createMarkerElement, createPopupContent } from '@/utils/mapUtils';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { createCustomIcon, createPopupContent } from '@/utils/mapUtils';
+
+// Fix for default markers in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface FoodItem {
   id: string;
@@ -21,83 +29,90 @@ interface FoodItem {
 interface MapContainerProps {
   items: FoodItem[];
   userLocation: {lat: number; lng: number} | null;
-  mapboxToken: string;
   onItemClick: (item: FoodItem) => void;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = ({ 
   items, 
   userLocation, 
-  mapboxToken, 
   onItemClick 
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
+  const map = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !userLocation || !mapboxToken) return;
+    if (!mapContainer.current || !userLocation) return;
 
-    const mapCenter: [number, number] = [userLocation.lng, userLocation.lat];
+    // Initialize Leaflet map
+    map.current = L.map(mapContainer.current).setView(
+      [userLocation.lat, userLocation.lng], 
+      12
+    );
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: mapCenter,
-      zoom: 12,
-      accessToken: mapboxToken
-    });
-
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map.current);
 
     // Add user location marker
-    new mapboxgl.Marker({ color: '#3b82f6' })
-      .setLngLat(mapCenter)
-      .setPopup(new mapboxgl.Popup().setHTML('<div class="text-center"><strong>Your Location</strong></div>'))
-      .addTo(map.current);
+    const userIcon = L.icon({
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
+      .addTo(map.current)
+      .bindPopup('<div class="text-center"><strong>Your Location</strong></div>');
 
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
-  }, [userLocation, mapboxToken]);
+  }, [userLocation]);
 
   // Add food item markers
   useEffect(() => {
     if (!map.current || !items.length) return;
 
     // Clear existing markers
-    const existingMarkers = document.querySelectorAll('.food-marker');
-    existingMarkers.forEach(marker => marker.remove());
+    markersRef.current.forEach(marker => {
+      map.current?.removeLayer(marker);
+    });
+    markersRef.current = [];
 
+    // Add new markers
     items.forEach((item) => {
-      const markerEl = createMarkerElement(item);
-      const popup = new mapboxgl.Popup({ offset: 25 })
-        .setHTML(createPopupContent(item));
+      const customIcon = createCustomIcon(item);
+      const marker = L.marker([item.location.lat, item.location.lng], { 
+        icon: customIcon 
+      }).addTo(map.current!);
 
-      const marker = new mapboxgl.Marker(markerEl)
-        .setLngLat([item.location.lng, item.location.lat])
-        .setPopup(popup)
-        .addTo(map.current!);
-
-      markerEl.addEventListener('click', () => {
+      marker.bindPopup(createPopupContent(item));
+      
+      marker.on('click', () => {
         onItemClick(item);
       });
+
+      markersRef.current.push(marker);
     });
 
     // Fit map to show all markers
     if (items.length > 0 && userLocation) {
-      const bounds = new mapboxgl.LngLatBounds();
+      const group = new L.FeatureGroup([
+        L.marker([userLocation.lat, userLocation.lng]),
+        ...markersRef.current
+      ]);
       
-      // Add user location to bounds
-      bounds.extend([userLocation.lng, userLocation.lat]);
-      
-      // Add all food item locations to bounds
-      items.forEach(item => {
-        bounds.extend([item.location.lng, item.location.lat]);
-      });
-
-      map.current.fitBounds(bounds, { padding: 50 });
+      map.current.fitBounds(group.getBounds().pad(0.1));
     }
   }, [items, userLocation, onItemClick]);
 

@@ -1,4 +1,6 @@
 
+import L from 'leaflet';
+
 export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const R = 6371; // Radius of the Earth in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -22,21 +24,29 @@ export const getCategoryColor = (category: string): string => {
   return colors[category as keyof typeof colors] || '#6b7280';
 };
 
-export const createMarkerElement = (item: any): HTMLDivElement => {
-  const markerEl = document.createElement('div');
-  markerEl.className = 'food-marker';
-  markerEl.style.width = '40px';
-  markerEl.style.height = '40px';
-  markerEl.style.borderRadius = '50%';
-  markerEl.style.border = '3px solid white';
-  markerEl.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
-  markerEl.style.cursor = 'pointer';
-  markerEl.style.backgroundImage = `url(${item.image})`;
-  markerEl.style.backgroundSize = 'cover';
-  markerEl.style.backgroundPosition = 'center';
-  markerEl.style.backgroundColor = getCategoryColor(item.category);
-  
-  return markerEl;
+export const createCustomIcon = (item: any): L.DivIcon => {
+  const iconHtml = `
+    <div class="food-marker" style="
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      cursor: pointer;
+      background-image: url(${item.image});
+      background-size: cover;
+      background-position: center;
+      background-color: ${getCategoryColor(item.category)};
+    "></div>
+  `;
+
+  return L.divIcon({
+    html: iconHtml,
+    className: 'custom-food-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20]
+  });
 };
 
 export const createPopupContent = (item: any): string => {

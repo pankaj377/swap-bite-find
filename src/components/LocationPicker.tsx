@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,14 +32,14 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         const { latitude, longitude } = position.coords;
         
         try {
-          // Use reverse geocoding to get address
+          // Use Nominatim (OpenStreetMap) for reverse geocoding
           const response = await fetch(
-            `https://api.mapbox.gl/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${localStorage.getItem('mapbox_token') || 'pk.demo'}`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
           );
           
           if (response.ok) {
             const data = await response.json();
-            const address = data.features?.[0]?.place_name || `${latitude}, ${longitude}`;
+            const address = data.display_name || `${latitude}, ${longitude}`;
             
             const newLocation = {
               lat: latitude,
