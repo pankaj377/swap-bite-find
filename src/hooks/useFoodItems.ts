@@ -65,9 +65,16 @@ export const useFoodItems = (user: User | null, userLocation: {lat: number; lng:
     if (!user || !userLocation) return;
 
     try {
+      // Join food_items with profiles table to get user information
       const { data: foodItems, error } = await supabase
         .from('food_items')
-        .select('*')
+        .select(`
+          *,
+          profiles!inner (
+            full_name,
+            avatar_url
+          )
+        `)
         .neq('user_id', user.id);
 
       if (error) throw error;
@@ -78,25 +85,24 @@ export const useFoodItems = (user: User | null, userLocation: {lat: number; lng:
         return;
       }
 
-      // Get user profiles separately
-      const userIds = [...new Set(foodItems.map(item => item.user_id))];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      const itemsWithUsers = foodItems.map(item => {
-        const userProfile = profiles?.find(profile => profile.id === item.user_id);
-        return {
-          ...item,
-          user: {
-            full_name: userProfile?.full_name || 'Unknown User',
-            avatar_url: userProfile?.avatar_url || ''
-          }
-        };
-      });
+      // Transform the data to match our expected format
+      const itemsWithUsers = foodItems.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        image_url: item.image_url,
+        category: item.category,
+        location_lat: item.location_lat,
+        location_lng: item.location_lng,
+        location_address: item.location_address,
+        user_id: item.user_id,
+        created_at: item.created_at,
+        expire_date: item.expire_date,
+        user: {
+          full_name: item.profiles?.full_name || 'Food Sharer',
+          avatar_url: item.profiles?.avatar_url || ''
+        }
+      }));
 
       setNearbyItems(itemsWithUsers);
     } catch (error: any) {
