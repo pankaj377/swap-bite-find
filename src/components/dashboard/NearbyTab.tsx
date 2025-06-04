@@ -51,14 +51,23 @@ export const NearbyTab: React.FC<NearbyTabProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {items.map(item => (
-        <FoodCard
-          key={item.id}
-          item={convertToFoodCardFormat(item)}
-          onLike={onLike}
-        />
-      ))}
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+        Food shared by community members
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {items.map(item => {
+          const convertedItem = convertToFoodCardFormat(item);
+          console.log('Food shared by:', item.user.full_name); // Debug log to see the sharer's name
+          return (
+            <FoodCard
+              key={item.id}
+              item={convertedItem}
+              onLike={onLike}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };

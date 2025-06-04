@@ -97,17 +97,21 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
             {item.description}
           </p>
           
-          {/* User Info */}
-          <div className="flex items-center space-x-2 mb-4">
+          {/* Food Sharer Info - Made more prominent */}
+          <div className="flex items-center space-x-3 mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
             <img
-              src={item.user.avatar}
+              src={item.user.avatar || '/placeholder.svg'}
               alt={item.user.name}
-              className="w-6 h-6 rounded-full object-cover"
+              className="w-8 h-8 rounded-full object-cover border-2 border-green-300"
             />
-            <span className="text-sm text-gray-600 dark:text-gray-300">{item.user.name}</span>
-            <div className="flex items-center text-gray-400 text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              {item.postedAt}
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                Shared by: {item.user.name}
+              </p>
+              <div className="flex items-center text-green-600 dark:text-green-400 text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                {item.postedAt}
+              </div>
             </div>
           </div>
           
