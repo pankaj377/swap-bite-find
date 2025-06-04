@@ -24,6 +24,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [lastSentOtp, setLastSentOtp] = useState('');
 
   const sendOTP = async () => {
     if (!phoneNumber || phoneNumber.trim() === '') {
@@ -35,9 +36,16 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     try {
       // Generate a 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      setLastSentOtp(otpCode); // Store for demo purposes
       
       console.log('Attempting to send OTP to:', phoneNumber);
       
+      // First, clean up any existing OTP records for this phone number
+      await supabase
+        .from('otp_verifications')
+        .delete()
+        .eq('phone_number', phoneNumber);
+
       // Store OTP in database
       const { error } = await supabase
         .from('otp_verifications')
@@ -54,7 +62,8 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
       // In a real app, you would send SMS here
       console.log('OTP Code (for testing):', otpCode);
-      toast.success(`OTP sent to ${phoneNumber} (Check console for demo)`);
+      toast.success(`OTP sent to ${phoneNumber}`);
+      toast.info(`Demo OTP: ${otpCode} (Check console)`, { duration: 8000 });
     } catch (error: any) {
       console.error('Error sending OTP:', error);
       toast.error(`Failed to send OTP: ${error.message || 'Unknown error'}`);
@@ -134,6 +143,13 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     onClose();
   };
 
+  const fillDemoOtp = () => {
+    if (lastSentOtp) {
+      setOtp(lastSentOtp);
+      toast.info('Demo OTP filled automatically');
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -177,8 +193,20 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
             </Button>
           </div>
           
-          <div className="text-xs text-gray-500 text-center">
-            For demo purposes, check the browser console for the OTP code.
+          <div className="text-center space-y-2">
+            <div className="text-xs text-gray-500">
+              For demo purposes, check the browser console for the OTP code.
+            </div>
+            {lastSentOtp && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fillDemoOtp}
+                className="text-xs text-blue-600 hover:text-blue-700"
+              >
+                Fill Demo OTP ({lastSentOtp})
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

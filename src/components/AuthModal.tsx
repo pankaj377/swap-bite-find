@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 import { PhoneVerificationModal } from './PhoneVerificationModal';
+import { toast } from 'sonner';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
     
     if (!loginData.email || !loginData.password) {
+      toast.error('Please fill in all fields');
       return;
     }
     
@@ -49,10 +51,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const validateSignupData = () => {
+    if (!signupData.name.trim()) {
+      toast.error('Please enter your full name');
+      return false;
+    }
+    if (!signupData.email.trim()) {
+      toast.error('Please enter your email');
+      return false;
+    }
+    if (!signupData.password) {
+      toast.error('Please enter a password');
+      return false;
+    }
+    if (signupData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return false;
+    }
+    if (!signupData.phoneNumber.trim()) {
+      toast.error('Please enter your phone number');
+      return false;
+    }
+    
+    // Basic phone number validation
+    const phoneRegex = /^[+]?[\d\s\-\(\)]{10,}$/;
+    if (!phoneRegex.test(signupData.phoneNumber.trim())) {
+      toast.error('Please enter a valid phone number');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!signupData.name || !signupData.email || !signupData.password || !signupData.phoneNumber) {
+    if (!validateSignupData()) {
       return;
     }
     
@@ -61,16 +95,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       // Store signup data for after phone verification
       setPendingSignupData(signupData);
       setShowPhoneVerification(true);
+      toast.info('Please verify your phone number to complete registration');
     } catch (error) {
       console.error('Signup preparation failed:', error);
+      toast.error('Failed to prepare signup process');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePhoneVerified = async () => {
-    if (!pendingSignupData) return;
+    if (!pendingSignupData) {
+      toast.error('Signup data is missing');
+      return;
+    }
     
+    setIsLoading(true);
     try {
       await signup(
         pendingSignupData.email, 
@@ -81,9 +121,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
       setSignupData({ name: '', email: '', password: '', phoneNumber: '' });
       setPendingSignupData(null);
+      toast.success('Account created successfully!');
     } catch (error) {
       console.error('Signup failed:', error);
+      toast.error('Failed to create account');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handlePhoneVerificationClose = () => {
+    setShowPhoneVerification(false);
+    setPendingSignupData(null);
+    setIsLoading(false);
   };
 
   return (
@@ -182,7 +232,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     type="tel"
                     value={signupData.phoneNumber}
                     onChange={(e) => setSignupData({ ...signupData, phoneNumber: e.target.value })}
-                    placeholder="Enter your phone number"
+                    placeholder="Enter your phone number (e.g., +1234567890)"
                     required
                   />
                 </div>
@@ -195,8 +245,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       type={showPassword ? 'text' : 'password'}
                       value={signupData.password}
                       onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                      placeholder="Create a password"
+                      placeholder="Create a password (min 6 characters)"
                       required
+                      minLength={6}
                     />
                     <Button
                       type="button"
@@ -229,10 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
       <PhoneVerificationModal
         isOpen={showPhoneVerification}
-        onClose={() => {
-          setShowPhoneVerification(false);
-          setPendingSignupData(null);
-        }}
+        onClose={handlePhoneVerificationClose}
         phoneNumber={pendingSignupData?.phoneNumber || ''}
         onVerified={handlePhoneVerified}
       />
