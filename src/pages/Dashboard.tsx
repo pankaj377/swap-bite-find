@@ -11,6 +11,7 @@ import { MyItemsTab } from '@/components/dashboard/MyItemsTab';
 import { MapTab } from '@/components/dashboard/MapTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFoodItems } from '@/hooks/useFoodItems';
+import { useExpiredFoodCleanup } from '@/hooks/useExpiredFoodCleanup';
 import { convertToFoodCardFormat } from '@/utils/foodItemUtils';
 import { toast } from 'sonner';
 
@@ -18,6 +19,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: number; lng: number} | null>(null);
+
+  // Use the cleanup hook to automatically remove expired items
+  useExpiredFoodCleanup();
 
   const { myFoodItems, nearbyItems, loading, refreshItems } = useFoodItems(user, userLocation);
 

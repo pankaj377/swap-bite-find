@@ -34,6 +34,7 @@ export const convertToFoodCardFormat = (item: FoodItem) => ({
   },
   user_id: item.user_id,
   postedAt: new Date(item.created_at).toLocaleDateString(),
+  expireDate: item.expire_date,
   likes: 0,
   isLiked: false
 });

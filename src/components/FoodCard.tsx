@@ -1,12 +1,12 @@
-
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, MapPin, Clock, User } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Clock, User, AlertTriangle } from 'lucide-react';
 import { RequestFoodModal } from '@/components/RequestFoodModal';
 import { ChatModal } from '@/components/ChatModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { format, isAfter, differenceInHours, differenceInDays } from 'date-fns';
 
 interface FoodItem {
   id: string;
@@ -18,6 +18,7 @@ interface FoodItem {
   user: { name: string; avatar: string };
   user_id?: string;
   postedAt: string;
+  expireDate?: string;
   likes: number;
   isLiked: boolean;
 }
@@ -43,6 +44,41 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  const getExpiryInfo = () => {
+    if (!item.expireDate) return null;
+    
+    const expireDate = new Date(item.expireDate);
+    const now = new Date();
+    
+    if (isAfter(now, expireDate)) {
+      return { text: 'Expired', color: 'bg-red-100 text-red-800 border-red-200', urgent: true };
+    }
+    
+    const hoursLeft = differenceInHours(expireDate, now);
+    const daysLeft = differenceInDays(expireDate, now);
+    
+    if (hoursLeft < 24) {
+      return { 
+        text: `Expires in ${hoursLeft}h`, 
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
+        urgent: true 
+      };
+    } else if (daysLeft === 1) {
+      return { 
+        text: 'Expires tomorrow', 
+        color: 'bg-orange-100 text-orange-800 border-orange-200', 
+        urgent: false 
+      };
+    } else {
+      return { 
+        text: `Expires in ${daysLeft} days`, 
+        color: 'bg-blue-100 text-blue-800 border-blue-200', 
+        urgent: false 
+      };
+    }
+  };
+
+  const expiryInfo = getExpiryInfo();
   const isOwnItem = user?.id === item.user_id;
 
   const handleRequestClick = () => {
@@ -70,10 +106,17 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
             alt={item.title}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
             <Badge className={getCategoryColor(item.category)}>
               {item.category}
             </Badge>
+            {expiryInfo && (
+              <Badge className={`${expiryInfo.color} border flex items-center gap-1`}>
+                {expiryInfo.urgent && <AlertTriangle className="h-3 w-3" />}
+                <Clock className="h-3 w-3" />
+                {expiryInfo.text}
+              </Badge>
+            )}
           </div>
           <div className="absolute top-3 right-3">
             <Button
@@ -96,6 +139,16 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
           <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
             {item.description}
           </p>
+          
+          {/* Expiry Details */}
+          {item.expireDate && (
+            <div className="mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex items-center text-gray-600 dark:text-gray-300 text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                Expires: {format(new Date(item.expireDate), 'PPp')}
+              </div>
+            </div>
+          )}
           
           {/* Food Sharer Info - Made more prominent */}
           <div className="flex items-center space-x-3 mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">

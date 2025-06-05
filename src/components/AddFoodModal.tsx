@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Camera, Upload, X } from 'lucide-react';
+import { Camera, Upload, X, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface AddFoodModalProps {
   open: boolean;
@@ -39,6 +46,8 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [expiryDate, setExpiryDate] = useState<Date>();
+  const [expiryTime, setExpiryTime] = useState<string>('12:00');
   const [foodData, setFoodData] = useState({
     title: '',
     description: '',
@@ -137,6 +146,11 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
       toast.error("Please fill all required fields");
       return;
     }
+
+    if (!expiryDate) {
+      toast.error("Please select an expiry date");
+      return;
+    }
     
     setLoading(true);
 
@@ -151,6 +165,11 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         }
       }
 
+      // Combine expiry date and time
+      const [hours, minutes] = expiryTime.split(':');
+      const expiryDateTime = new Date(expiryDate);
+      expiryDateTime.setHours(parseInt(hours), parseInt(minutes));
+
       const { error } = await supabase.from('food_items').insert({
         user_id: user.id,
         title: foodData.title,
@@ -160,6 +179,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         location_lat: foodData.location_lat,
         location_lng: foodData.location_lng,
         location_address: foodData.location_address,
+        expire_date: expiryDateTime.toISOString(),
       });
 
       if (error) {
@@ -180,6 +200,8 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         location_lng: -74.0060,
         location_address: 'Near your location',
       });
+      setExpiryDate(undefined);
+      setExpiryTime('12:00');
       removePhoto();
     } catch (error: any) {
       console.error("Error sharing food item:", error);
@@ -305,6 +327,59 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Expiry Date and Time Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Expiry Date *
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !expiryDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={expiryDate}
+                    onSelect={setExpiryDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Expiry Time *
+              </label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  type="time"
+                  value={expiryTime}
+                  onChange={(e) => setExpiryTime(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            Food items will be automatically removed after the expiry date and time
+          </p>
 
           <div className="space-y-2">
             <label htmlFor="location_address" className="text-sm font-medium">
