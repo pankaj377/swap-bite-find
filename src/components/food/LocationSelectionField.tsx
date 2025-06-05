@@ -15,7 +15,10 @@ export const LocationSelectionField: React.FC<LocationSelectionFieldProps> = ({
   return (
     <div className="space-y-2">
       <Label>Pickup Location *</Label>
-      <LocationPicker onLocationSelect={onLocationSelect} />
+      <LocationPicker 
+        onLocationChange={onLocationSelect}
+        initialLocation={location}
+      />
       {location && (
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Selected: {location.address}
