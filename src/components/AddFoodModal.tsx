@@ -1,16 +1,15 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LocationPicker } from '@/components/LocationPicker';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { CalendarDays, Clock } from 'lucide-react';
+import { useAddFoodForm } from '@/hooks/useAddFoodForm';
+import { BasicFoodFields } from '@/components/food/BasicFoodFields';
+import { ExpiryDateTimeFields } from '@/components/food/ExpiryDateTimeFields';
+import { ImageUploadField } from '@/components/food/ImageUploadField';
+import { LocationSelectionField } from '@/components/food/LocationSelectionField';
 
 interface AddFoodModalProps {
   open: boolean;
@@ -25,41 +24,13 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
-    image: null as File | null,
-    location: null as { lat: number; lng: number; address: string } | null,
-    expireDate: '',
-    expireTime: ''
-  });
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleLocationSelect = (location: { lat: number; lng: number; address: string }) => {
-    setFormData(prev => ({ ...prev, location }));
-  };
-
-  const handleImageSelect = (file: File) => {
-    setFormData(prev => ({ ...prev, image: file }));
-  };
-
-  const handleSameDayExpiry = () => {
-    const today = new Date();
-    const todayString = format(today, 'yyyy-MM-dd');
-    const endOfDay = '23:59';
-    
-    setFormData(prev => ({
-      ...prev,
-      expireDate: todayString,
-      expireTime: endOfDay
-    }));
-    
-    toast.success('Set to expire at end of today');
-  };
+  const {
+    formData,
+    handleInputChange,
+    handleLocationSelect,
+    handleImageSelect,
+    resetForm
+  } = useAddFoodForm();
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -134,15 +105,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
       if (error) throw error;
 
       toast.success('Food item shared successfully!');
-      setFormData({
-        title: '',
-        description: '',
-        category: '',
-        image: null,
-        location: null,
-        expireDate: '',
-        expireTime: ''
-      });
+      resetForm();
       onFoodAdded();
       onOpenChange(false);
     } catch (error: any) {
@@ -161,115 +124,25 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Food Title *</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder="What food are you sharing?"
-              required
-            />
-          </div>
+          <BasicFoodFields
+            title={formData.title}
+            description={formData.description}
+            category={formData.category}
+            onInputChange={handleInputChange}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Describe the food item..."
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
-            <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="vegetables">Vegetables</SelectItem>
-                <SelectItem value="fruits">Fruits</SelectItem>
-                <SelectItem value="baked">Baked Goods</SelectItem>
-                <SelectItem value="desserts">Desserts</SelectItem>
-                <SelectItem value="meals">Prepared Meals</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="image">Food Photo</Label>
-            <Input
-              id="image"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleImageSelect(file);
-              }}
-            />
-          </div>
+          <ImageUploadField onImageSelect={handleImageSelect} />
           
-          {/* Expiry Date and Time Section */}
-          <div className="space-y-3 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-            <div className="flex items-center justify-between">
-              <Label className="text-orange-800 dark:text-orange-300 font-medium">
-                Expiry Date & Time *
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSameDayExpiry}
-                className="text-orange-600 border-orange-300 hover:bg-orange-100"
-              >
-                <CalendarDays className="h-4 w-4 mr-1" />
-                Same Day
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="expireDate" className="text-sm">Date</Label>
-                <Input
-                  id="expireDate"
-                  type="date"
-                  value={formData.expireDate}
-                  onChange={(e) => handleInputChange('expireDate', e.target.value)}
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="expireTime" className="text-sm">Time</Label>
-                <Input
-                  id="expireTime"
-                  type="time"
-                  value={formData.expireTime}
-                  onChange={(e) => handleInputChange('expireTime', e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            
-            <p className="text-xs text-orange-600 dark:text-orange-400">
-              <Clock className="h-3 w-3 inline mr-1" />
-              Food will be automatically removed after this time
-            </p>
-          </div>
+          <ExpiryDateTimeFields
+            expireDate={formData.expireDate}
+            expireTime={formData.expireTime}
+            onInputChange={handleInputChange}
+          />
 
-          <div className="space-y-2">
-            <Label>Pickup Location *</Label>
-            <LocationPicker onLocationSelect={handleLocationSelect} />
-            {formData.location && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Selected: {formData.location.address}
-              </p>
-            )}
-          </div>
+          <LocationSelectionField
+            location={formData.location}
+            onLocationSelect={handleLocationSelect}
+          />
 
           <Button 
             type="submit" 
