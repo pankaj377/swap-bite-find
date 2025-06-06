@@ -36,12 +36,21 @@ export const useFoodItems = (user: User | null, userLocation: {lat: number; lng:
     if (!user) return;
 
     try {
+      setLoading(true);
+      console.log('Loading my food items for user:', user.id);
+      
       const { data, error } = await supabase
         .from('food_items')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading my food items:', error);
+        throw error;
+      }
+      
+      console.log('My food items loaded:', data);
       
       // For my own items, we don't need to fetch user profile since it's the current user
       const itemsWithUser = (data || []).map(item => ({
@@ -62,25 +71,33 @@ export const useFoodItems = (user: User | null, userLocation: {lat: number; lng:
   };
 
   const loadNearbyItems = async () => {
-    if (!user || !userLocation) return;
+    if (!user) return;
 
     try {
+      console.log('Loading nearby items for user:', user.id);
+      
       // First get all food items except user's own items
       const { data: foodItems, error } = await supabase
         .from('food_items')
         .select('*')
-        .neq('user_id', user.id);
+        .neq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading nearby food items:', error);
+        throw error;
+      }
+
+      console.log('Nearby food items loaded:', foodItems);
 
       if (!foodItems || foodItems.length === 0) {
         setNearbyItems([]);
-        setLoading(false);
         return;
       }
 
       // Get unique user IDs from food items
       const userIds = [...new Set(foodItems.map(item => item.user_id))];
+      console.log('Loading profiles for user IDs:', userIds);
       
       // Fetch user profiles for those IDs
       const { data: profiles, error: profilesError } = await supabase
@@ -92,6 +109,8 @@ export const useFoodItems = (user: User | null, userLocation: {lat: number; lng:
         console.error('Error fetching profiles:', profilesError);
         // Continue without profiles data
       }
+
+      console.log('Profiles loaded:', profiles);
 
       // Combine food items with user profiles
       const itemsWithUsers = foodItems.map(item => {
@@ -105,22 +124,24 @@ export const useFoodItems = (user: User | null, userLocation: {lat: number; lng:
         };
       });
 
+      console.log('Final nearby items with users:', itemsWithUsers);
       setNearbyItems(itemsWithUsers);
     } catch (error: any) {
       console.error('Error loading nearby food items:', error);
       toast.error('Failed to load nearby food items');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const refreshItems = () => {
-    loadMyFoodItems();
-    loadNearbyItems();
+  const refreshItems = async () => {
+    console.log('Refreshing food items...');
+    if (user) {
+      await Promise.all([loadMyFoodItems(), loadNearbyItems()]);
+    }
   };
 
   useEffect(() => {
     if (user) {
+      console.log('User changed, loading food items for:', user.id);
       loadMyFoodItems();
       loadNearbyItems();
     }

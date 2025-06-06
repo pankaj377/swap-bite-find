@@ -1,4 +1,6 @@
 
+import { formatDistanceToNow } from 'date-fns';
+
 interface FoodItem {
   id: string;
   title: string;
@@ -17,24 +19,31 @@ interface FoodItem {
   };
 }
 
-export const convertToFoodCardFormat = (item: FoodItem) => ({
-  id: item.id,
-  title: item.title,
-  description: item.description,
-  image: item.image_url || '/placeholder.svg',
-  category: item.category,
-  location: {
-    lat: item.location_lat,
-    lng: item.location_lng,
-    address: item.location_address
-  },
-  user: {
-    name: item.user.full_name,
-    avatar: item.user.avatar_url || '/placeholder.svg'
-  },
-  user_id: item.user_id,
-  postedAt: new Date(item.created_at).toLocaleDateString(),
-  expireDate: item.expire_date,
-  likes: 0,
-  isLiked: false
-});
+export const convertToFoodCardFormat = (item: FoodItem) => {
+  console.log('Converting food item:', item);
+  
+  const converted = {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    image: item.image_url || '/placeholder.svg',
+    category: item.category,
+    location: {
+      lat: item.location_lat,
+      lng: item.location_lng,
+      address: item.location_address
+    },
+    user: {
+      name: item.user.full_name,
+      avatar: item.user.avatar_url || '/placeholder.svg'
+    },
+    user_id: item.user_id,
+    postedAt: formatDistanceToNow(new Date(item.created_at), { addSuffix: true }),
+    expireDate: item.expire_date,
+    likes: 0,
+    isLiked: false
+  };
+  
+  console.log('Converted food item:', converted);
+  return converted;
+};

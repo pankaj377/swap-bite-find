@@ -29,6 +29,7 @@ const Dashboard = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('User location obtained:', position.coords);
           setUserLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -53,8 +54,10 @@ const Dashboard = () => {
     setShowAddModal(true);
   };
 
-  const handleFoodAdded = () => {
-    refreshItems();
+  const handleFoodAdded = async () => {
+    console.log('Food added, refreshing items...');
+    await refreshItems();
+    toast.success('Food items refreshed!');
   };
 
   if (!user) {
@@ -67,6 +70,8 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  console.log('Dashboard render - My items:', myFoodItems.length, 'Nearby items:', nearbyItems.length);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
