@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,8 +51,9 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
     const expireDate = new Date(item.expireDate);
     const now = new Date();
     
+    // Don't show expired items at all
     if (isAfter(now, expireDate)) {
-      return { text: 'Expired', color: 'bg-red-100 text-red-800 border-red-200', urgent: true };
+      return null;
     }
     
     const hoursLeft = differenceInHours(expireDate, now);
@@ -77,6 +79,15 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
       };
     }
   };
+
+  // Check if item is expired - if so, don't render the card
+  if (item.expireDate) {
+    const expireDate = new Date(item.expireDate);
+    const now = new Date();
+    if (isAfter(now, expireDate)) {
+      return null; // Don't render expired items
+    }
+  }
 
   const expiryInfo = getExpiryInfo();
   const isOwnItem = user?.id === item.user_id;
@@ -140,7 +151,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
             {item.description}
           </p>
           
-          {/* Expiry Details */}
+          {/* Expiry Details - only show if not expired */}
           {item.expireDate && (
             <div className="mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div className="flex items-center text-gray-600 dark:text-gray-300 text-xs">
