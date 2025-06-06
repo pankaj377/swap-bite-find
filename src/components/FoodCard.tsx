@@ -58,22 +58,23 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
     
     const hoursLeft = differenceInHours(expireDate, now);
     const daysLeft = differenceInDays(expireDate, now);
+    const timeString = format(expireDate, 'h:mm a');
     
     if (hoursLeft < 24) {
       return { 
-        text: `Expires in ${hoursLeft}h`, 
+        text: `Expires at ${timeString} (${hoursLeft}h left)`, 
         color: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
         urgent: true 
       };
     } else if (daysLeft === 1) {
       return { 
-        text: 'Expires tomorrow', 
+        text: `Expires tomorrow at ${timeString}`, 
         color: 'bg-orange-100 text-orange-800 border-orange-200', 
         urgent: false 
       };
     } else {
       return { 
-        text: `Expires in ${daysLeft} days`, 
+        text: `Expires in ${daysLeft} days at ${timeString}`, 
         color: 'bg-blue-100 text-blue-800 border-blue-200', 
         urgent: false 
       };
