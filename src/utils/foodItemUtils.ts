@@ -21,6 +21,7 @@ interface FoodItem {
 
 export const convertToFoodCardFormat = (item: FoodItem) => {
   console.log('Converting food item:', item);
+  console.log('Original expire_date from database:', item.expire_date);
   
   const converted = {
     id: item.id,
@@ -39,11 +40,11 @@ export const convertToFoodCardFormat = (item: FoodItem) => {
     },
     user_id: item.user_id,
     postedAt: formatDistanceToNow(new Date(item.created_at), { addSuffix: true }),
-    expireDate: item.expire_date,
+    expireDate: item.expire_date, // Keep the full datetime string as stored in database
     likes: 0,
     isLiked: false
   };
   
-  console.log('Converted food item:', converted);
+  console.log('Converted food item with expire_date:', converted.expireDate);
   return converted;
 };

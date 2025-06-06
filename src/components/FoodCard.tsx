@@ -48,8 +48,13 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
   const getExpiryInfo = () => {
     if (!item.expireDate) return null;
     
+    console.log('Processing expiry for item:', item.title, 'expire_date:', item.expireDate);
     const expireDate = new Date(item.expireDate);
     const now = new Date();
+    
+    console.log('Expire date object:', expireDate);
+    console.log('Current time:', now);
+    console.log('Is expired?', isAfter(now, expireDate));
     
     // Don't show expired items at all
     if (isAfter(now, expireDate)) {
@@ -59,6 +64,8 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
     const hoursLeft = differenceInHours(expireDate, now);
     const daysLeft = differenceInDays(expireDate, now);
     const timeString = format(expireDate, 'h:mm a');
+    
+    console.log('Hours left:', hoursLeft, 'Time string:', timeString);
     
     if (hoursLeft < 24) {
       return { 
@@ -86,6 +93,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onLike }) => {
     const expireDate = new Date(item.expireDate);
     const now = new Date();
     if (isAfter(now, expireDate)) {
+      console.log('Item expired, not rendering:', item.title);
       return null; // Don't render expired items
     }
   }
