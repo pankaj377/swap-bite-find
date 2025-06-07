@@ -29,6 +29,24 @@ export const ExpiryDateTimeFields: React.FC<ExpiryDateTimeFieldsProps> = ({
     toast.success('Set to expire at end of today');
   };
 
+  // Helper function to combine date and time into ISO timestamp
+  const getCombinedDateTime = () => {
+    if (expireDate && expireTime) {
+      const combinedDateTime = `${expireDate}T${expireTime}:00`;
+      console.log('Combined datetime for storage:', combinedDateTime);
+      return combinedDateTime;
+    }
+    return null;
+  };
+
+  // Update the parent component with the combined datetime whenever date or time changes
+  React.useEffect(() => {
+    const combined = getCombinedDateTime();
+    if (combined) {
+      onInputChange('expireDateTime', combined);
+    }
+  }, [expireDate, expireTime]);
+
   return (
     <div className="space-y-3 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
       <div className="flex items-center justify-between">
