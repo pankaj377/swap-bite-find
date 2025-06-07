@@ -2,7 +2,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Clock } from 'lucide-react';
-import { format, isAfter, differenceInHours, differenceInDays } from 'date-fns';
+import { format, isAfter, differenceInHours, differenceInDays, parseISO } from 'date-fns';
 
 interface ExpiryBadgeProps {
   expireDate: string;
@@ -11,7 +11,9 @@ interface ExpiryBadgeProps {
 export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({ expireDate }) => {
   const getExpiryInfo = () => {
     console.log('Processing expiry for expire_date:', expireDate);
-    const expireDateObj = new Date(expireDate);
+    
+    // Parse the ISO string properly to preserve the exact time
+    const expireDateObj = parseISO(expireDate);
     const now = new Date();
     
     console.log('Expire date object:', expireDateObj);
@@ -25,9 +27,11 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({ expireDate }) => {
     
     const hoursLeft = differenceInHours(expireDateObj, now);
     const daysLeft = differenceInDays(expireDateObj, now);
+    
+    // Use the actual time from the expiry date, not a formatted version
     const timeString = format(expireDateObj, 'h:mm a');
     
-    console.log('Hours left:', hoursLeft, 'Time string:', timeString);
+    console.log('Hours left:', hoursLeft, 'Actual expiry time:', timeString);
     
     if (hoursLeft < 24) {
       return { 
