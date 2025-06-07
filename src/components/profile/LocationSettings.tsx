@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { LocationPicker } from '@/components/LocationPicker';
@@ -29,6 +29,36 @@ const LocationSettings: React.FC<LocationSettingsProps> = ({
   onProfileDataChange
 }) => {
   const { user } = useAuth();
+
+  // Load saved location from database when component mounts
+  useEffect(() => {
+    const loadSavedLocation = async () => {
+      if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('location_lat, location_lng, location_address')
+            .eq('id', user.id)
+            .single();
+
+          if (!error && data && data.location_lat && data.location_lng) {
+            const savedLocation = {
+              lat: data.location_lat,
+              lng: data.location_lng,
+              address: data.location_address || `${data.location_lat}, ${data.location_lng}`
+            };
+            
+            onLocationChange(savedLocation);
+            onProfileDataChange({ ...profileData, location: savedLocation.address });
+          }
+        } catch (error) {
+          console.error('Error loading saved location:', error);
+        }
+      }
+    };
+
+    loadSavedLocation();
+  }, [user?.id]);
 
   const saveLocationToDatabase = async (location: { lat: number; lng: number; address: string }) => {
     try {
@@ -81,6 +111,9 @@ const LocationSettings: React.FC<LocationSettingsProps> = ({
               <li>Calculate distances for food pickup</li>
               <li>Improve community connections in your neighborhood</li>
             </ul>
+            <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+              💡 Your location was automatically detected when you logged in for better experience
+            </p>
           </div>
         </div>
       ) : (

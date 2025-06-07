@@ -3,17 +3,19 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Navigation } from '@/components/Navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAutoLocationDetection } from '@/hooks/useAutoLocationDetection';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 
 const Profile = () => {
   const { user } = useAuth();
+  const { isDetecting } = useAutoLocationDetection();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     name: user?.name || 'Demo User',
     email: user?.email || 'demo@swapeat.com',
     bio: 'Passionate about reducing food waste and building community connections. Love sharing fresh produce from my garden!',
-    location: 'San Francisco, CA',
+    location: user?.location || 'San Francisco, CA',
     phone: '+1 (555) 123-4567'
   });
 
@@ -41,6 +43,15 @@ const Profile = () => {
       
       <div className="pt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
+          {/* Show location detection status */}
+          {isDetecting && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-blue-800 dark:text-blue-300 text-sm">
+                🌍 Detecting your location to enhance your experience...
+              </p>
+            </div>
+          )}
+
           {/* Profile Header */}
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg mb-8">
             <div className="p-8">
