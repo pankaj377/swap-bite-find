@@ -1,7 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createMarkerIcon, createPopupContent } from '@/utils/mapUtils';
-import { MapplsTokenSetup } from './MapplsTokenSetup';
 
 // Extend Window interface for TypeScript
 declare global {
@@ -39,7 +38,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  // Default API key for testing - users can replace this with their own
+  const [apiKey] = useState<string>('be48418f57f0f2cb90fc777fe3caf607');
   const [mapReady, setMapReady] = useState(false);
   const markersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
@@ -256,11 +256,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   }, [items, onItemClick, mapReady]);
 
-  // Show token setup if no API key
-  if (!apiKey) {
-    return <MapplsTokenSetup onTokenSubmit={setApiKey} />;
-  }
-
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
@@ -283,6 +278,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           <p className="text-gray-600 text-sm">No food items found in your area</p>
         </div>
       )}
+
+      {/* API Key Info */}
+      <div className="absolute top-4 right-4 bg-blue-50/90 backdrop-blur-sm p-2 rounded-lg shadow-md">
+        <p className="text-xs text-blue-600">Using demo API key</p>
+      </div>
     </div>
   );
 };
