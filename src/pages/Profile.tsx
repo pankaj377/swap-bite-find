@@ -15,7 +15,7 @@ const Profile = () => {
     name: user?.name || 'Demo User',
     email: user?.email || 'demo@swapeat.com',
     bio: 'Passionate about reducing food waste and building community connections. Love sharing fresh produce from my garden!',
-    location: user?.location || 'San Francisco, CA',
+    location: 'San Francisco, CA',
     phone: '+1 (555) 123-4567'
   });
 

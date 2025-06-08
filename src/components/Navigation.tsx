@@ -3,16 +3,23 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Moon, Sun, Menu, MessageCircle, User, MapPin } from 'lucide-react';
+import { Moon, Sun, Menu, MessageCircle, User, MapPin, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthModal } from '@/components/AuthModal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const Navigation = () => {
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, user, logout } = useAuth();
   const location = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleAuthAction = () => {
     if (isAuthenticated) {
@@ -20,6 +27,10 @@ export const Navigation = () => {
     } else {
       setShowAuthModal(true);
     }
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
 
   return (
@@ -104,22 +115,22 @@ export const Navigation = () => {
 
               {isAuthenticated ? (
                 <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
+                  <div className="hidden sm:flex items-center space-x-2">
                     <img 
                       src={user?.avatar || `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`} 
                       alt={user?.name}
                       className="w-8 h-8 rounded-full object-cover border-2 border-green-200"
                     />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {user?.name}
                     </span>
                   </div>
-                  <Button variant="outline" size="sm" onClick={logout}>
+                  <Button variant="outline" size="sm" onClick={logout} className="hidden sm:flex">
                     Logout
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div className="hidden md:flex items-center space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => setShowAuthModal(true)}>
                     Login
                   </Button>
@@ -129,9 +140,103 @@ export const Navigation = () => {
                 </div>
               )}
 
-              <Button variant="ghost" size="sm" className="md:hidden">
-                <Menu className="h-4 w-4" />
-              </Button>
+              {/* Mobile Menu Dropdown */}
+              <DropdownMenu open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="md:hidden">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg"
+                >
+                  {isAuthenticated ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          to="/dashboard" 
+                          className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={closeMobileMenu}
+                        >
+                          <MapPin className="h-4 w-4 mr-2" />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          to="/messages" 
+                          className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={closeMobileMenu}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Messages
+                          <Badge className="bg-orange-500 text-white text-xs ml-auto">3</Badge>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          to="/profile" 
+                          className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={closeMobileMenu}
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          Profile
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        onClick={() => {
+                          logout();
+                          closeMobileMenu();
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Logout
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          to="/#how-it-works" 
+                          className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={closeMobileMenu}
+                        >
+                          How it Works
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          to="/#features" 
+                          className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={closeMobileMenu}
+                        >
+                          Features
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          to="/#community" 
+                          className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={closeMobileMenu}
+                        >
+                          Community
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="flex items-center w-full px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        onClick={() => {
+                          setShowAuthModal(true);
+                          closeMobileMenu();
+                        }}
+                      >
+                        Login / Sign Up
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
