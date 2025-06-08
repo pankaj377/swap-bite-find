@@ -1,16 +1,14 @@
 
-import React, { useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { createCustomIcon, createPopupContent } from '@/utils/mapUtils';
+import React, { useEffect, useRef, useState } from 'react';
+import { createMarkerIcon, createPopupContent } from '@/utils/mapUtils';
+import { MapplsTokenSetup } from './MapplsTokenSetup';
 
-// Fix for default markers in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Declare mappls as a global variable
+declare global {
+  interface Window {
+    mappls: any;
+  }
+}
 
 interface FoodItem {
   id: string;
@@ -38,80 +36,94 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   onItemClick 
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
-  const userMarkerRef = useRef<L.Marker | null>(null);
+  const map = useRef<any>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const markersRef = useRef<any[]>([]);
+  const userMarkerRef = useRef<any>(null);
+
+  // Load Mappls script
+  useEffect(() => {
+    if (!apiKey) return;
+
+    const script = document.createElement('script');
+    script.src = `https://apis.mappls.com/advancedmaps/api/${apiKey}/map_sdk?layer=vector&v=3.0&callback=initializeMap`;
+    script.async = true;
+    
+    // Define callback function
+    window.initializeMap = () => {
+      setMapLoaded(true);
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+      delete window.initializeMap;
+    };
+  }, [apiKey]);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !userLocation) return;
+    if (!mapContainer.current || !userLocation || !mapLoaded || !window.mappls) return;
 
-    console.log('Initializing map with user location:', userLocation);
+    console.log('Initializing Mappls map with user location:', userLocation);
 
-    // Initialize Leaflet map
-    map.current = L.map(mapContainer.current, {
+    // Initialize Mappls map
+    map.current = new window.mappls.Map(mapContainer.current, {
       center: [userLocation.lat, userLocation.lng],
       zoom: 13,
       zoomControl: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      touchZoom: true
+      scrollWheel: true,
+      disableDoubleClickZoom: false,
+      draggable: true
     });
-
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(map.current);
 
     // Add user location marker
-    const userIcon = L.divIcon({
-      html: `
+    const userMarkerDiv = document.createElement('div');
+    userMarkerDiv.innerHTML = `
+      <div style="
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 4px solid #3b82f6;
+        background-color: white;
+        position: relative;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      ">
         <div style="
-          width: 30px;
-          height: 30px;
+          width: 10px;
+          height: 10px;
           border-radius: 50%;
-          border: 4px solid #3b82f6;
-          background-color: white;
-          position: relative;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        ">
-          <div style="
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: #3b82f6;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-          "></div>
-        </div>
-      `,
-      className: 'user-location-marker',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      popupAnchor: [0, -15]
+          background-color: #3b82f6;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+        "></div>
+      </div>
+    `;
+
+    userMarkerRef.current = new window.mappls.Marker({
+      map: map.current,
+      position: [userLocation.lat, userLocation.lng],
+      icon: userMarkerDiv,
+      title: 'Your Location'
     });
 
-    userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
-      .addTo(map.current)
-      .bindPopup('<div class="text-center font-semibold text-blue-600">📍 Your Location</div>');
-
-    console.log('Map initialized successfully');
+    console.log('Mappls map initialized successfully');
 
     return () => {
       if (map.current) {
-        map.current.remove();
         map.current = null;
         userMarkerRef.current = null;
       }
     };
-  }, [userLocation]);
+  }, [userLocation, mapLoaded]);
 
   // Add food item markers
   useEffect(() => {
-    if (!map.current || !items || items.length === 0) {
+    if (!map.current || !items || items.length === 0 || !window.mappls) {
       console.log('No map or items to display');
       return;
     }
@@ -120,7 +132,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
     // Clear existing food markers
     markersRef.current.forEach(marker => {
-      map.current?.removeLayer(marker);
+      if (marker && marker.setMap) {
+        marker.setMap(null);
+      }
     });
     markersRef.current = [];
 
@@ -138,54 +152,79 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         return;
       }
 
-      const customIcon = createCustomIcon(item);
-      const marker = L.marker([item.location.lat, item.location.lng], { 
-        icon: customIcon 
-      }).addTo(map.current!);
+      // Create custom marker icon
+      const markerDiv = document.createElement('div');
+      markerDiv.innerHTML = createMarkerIcon(item);
+      
+      const marker = new window.mappls.Marker({
+        map: map.current,
+        position: [item.location.lat, item.location.lng],
+        icon: markerDiv,
+        title: item.title
+      });
 
       // Create and bind popup
       const popupContent = createPopupContent(item);
-      marker.bindPopup(popupContent, {
-        maxWidth: 300,
-        className: 'custom-popup'
+      const infoWindow = new window.mappls.InfoWindow({
+        content: popupContent,
+        maxWidth: 300
       });
       
       // Add click event
-      marker.on('click', () => {
+      marker.addListener('click', () => {
         console.log('Marker clicked:', item.title);
+        infoWindow.open(map.current, marker);
         onItemClick(item);
-      });
-
-      // Add popup open event
-      marker.on('popupopen', () => {
-        console.log('Popup opened for:', item.title);
       });
 
       markersRef.current.push(marker);
     });
 
     // Fit map to show all markers including user location
-    if (items.length > 0 && userLocation && userMarkerRef.current) {
-      const allMarkers = [...markersRef.current, userMarkerRef.current];
-      const group = new L.FeatureGroup(allMarkers);
+    if (items.length > 0 && userLocation) {
+      const bounds = new window.mappls.LatLngBounds();
       
-      // Set view with padding
-      map.current.fitBounds(group.getBounds(), {
-        padding: [20, 20],
+      // Add user location to bounds
+      bounds.extend([userLocation.lat, userLocation.lng]);
+      
+      // Add all food item locations to bounds
+      items.forEach(item => {
+        if (item.location && !isNaN(item.location.lat) && !isNaN(item.location.lng)) {
+          bounds.extend([item.location.lat, item.location.lng]);
+        }
+      });
+      
+      map.current.fitBounds(bounds, {
+        padding: 50,
         maxZoom: 15
       });
     }
 
     console.log(`Successfully added ${markersRef.current.length} food markers to map`);
 
-  }, [items, onItemClick]);
+  }, [items, onItemClick, mapLoaded]);
+
+  // Show token setup if no API key
+  if (!apiKey) {
+    return <MapplsTokenSetup onTokenSubmit={setApiKey} />;
+  }
 
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
       
+      {/* Loading indicator */}
+      {!mapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading Mappls map...</p>
+          </div>
+        </div>
+      )}
+      
       {/* Loading indicator when no items */}
-      {(!items || items.length === 0) && userLocation && (
+      {(!items || items.length === 0) && userLocation && mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto mb-2"></div>

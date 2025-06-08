@@ -1,6 +1,4 @@
 
-import L from 'leaflet';
-
 export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const R = 6371; // Radius of the Earth in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -27,10 +25,10 @@ export const getCategoryColor = (category: string): string => {
   return colors[category as keyof typeof colors] || '#6b7280';
 };
 
-export const createCustomIcon = (item: any): L.DivIcon => {
+export const createMarkerIcon = (item: any): string => {
   const color = getCategoryColor(item.category);
   
-  const iconHtml = `
+  return `
     <div class="food-marker" style="
       width: 44px;
       height: 44px;
@@ -72,14 +70,6 @@ export const createCustomIcon = (item: any): L.DivIcon => {
       </div>
     </div>
   `;
-
-  return L.divIcon({
-    html: iconHtml,
-    className: 'custom-food-marker',
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-    popupAnchor: [0, -22]
-  });
 };
 
 export const createPopupContent = (item: any): string => {

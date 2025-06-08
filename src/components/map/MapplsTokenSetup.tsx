@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-interface MapTokenSetupProps {
+interface MapplsTokenSetupProps {
   onTokenSubmit: (token: string) => void;
 }
 
-export const MapTokenSetup: React.FC<MapTokenSetupProps> = ({ onTokenSubmit }) => {
+export const MapplsTokenSetup: React.FC<MapplsTokenSetupProps> = ({ onTokenSubmit }) => {
   const [token, setToken] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
