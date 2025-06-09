@@ -50,8 +50,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     console.log('Initializing Leaflet map with user location:', userLocation);
 
     try {
-      // Initialize Leaflet map
-      map.current = L.map(mapContainer.current).setView([userLocation.lat, userLocation.lng], 13);
+      // Initialize Leaflet map with mobile-optimized settings
+      map.current = L.map(mapContainer.current, {
+        tap: true,
+        touchZoom: true,
+        dragging: true,
+        zoomControl: true,
+        scrollWheelZoom: false
+      }).setView([userLocation.lat, userLocation.lng], 13);
 
       // Add OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -164,17 +170,33 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           icon: markerIcon 
         }).addTo(map.current!);
 
-        // Create and bind popup
+        // Create and bind popup with mobile-optimized settings
         const popupContent = createPopupContent(item);
         marker.bindPopup(popupContent, {
-          maxWidth: 300,
-          className: 'food-popup'
+          maxWidth: 280,
+          minWidth: 250,
+          className: 'food-popup mobile-popup',
+          closeButton: true,
+          autoPan: true,
+          autoPanPadding: [20, 20],
+          keepInView: true
         });
         
-        // Add click event
-        marker.on('click', () => {
-          console.log('Marker clicked:', item.title);
+        // Add both click and tap events for mobile compatibility
+        marker.on('click tap', (e) => {
+          console.log('Marker clicked/tapped:', item.title);
+          // Ensure popup opens on mobile
+          marker.openPopup();
           onItemClick(item);
+          e.originalEvent?.stopPropagation();
+        });
+
+        // Add touch-specific event for better mobile support
+        marker.on('touchstart', (e) => {
+          console.log('Marker touched:', item.title);
+          setTimeout(() => {
+            marker.openPopup();
+          }, 100);
         });
 
         markersRef.current.push(marker);
@@ -215,6 +237,44 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
+      
+      {/* Mobile-specific styles */}
+      <style jsx global>{`
+        .mobile-popup .leaflet-popup-content {
+          margin: 12px 16px !important;
+          line-height: 1.4 !important;
+          font-size: 14px !important;
+        }
+        
+        .mobile-popup .leaflet-popup-content-wrapper {
+          border-radius: 12px !important;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
+        }
+        
+        .mobile-popup .leaflet-popup-tip {
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        }
+        
+        .food-marker {
+          cursor: pointer !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+        
+        .food-marker:hover {
+          transform: scale(1.1) !important;
+          transition: transform 0.2s ease !important;
+        }
+        
+        @media (max-width: 768px) {
+          .mobile-popup {
+            max-width: 90vw !important;
+          }
+          
+          .mobile-popup .leaflet-popup-content {
+            max-width: calc(90vw - 32px) !important;
+          }
+        }
+      `}</style>
       
       {/* Loading indicator */}
       {!mapReady && userLocation && (
