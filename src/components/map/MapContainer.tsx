@@ -1,14 +1,16 @@
 
 import React, { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { createMarkerIcon, createPopupContent } from '@/utils/mapUtils';
 
-// Extend Window interface for TypeScript
-declare global {
-  interface Window {
-    mappls: any;
-    initializeMap: () => void;
-  }
-}
+// Fix for default markers in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 interface FoodItem {
   id: string;
@@ -36,137 +38,93 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   onItemClick 
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<any>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  // Default API key for testing - users can replace this with their own
-  const [apiKey] = useState<string>('be48418f57f0f2cb90fc777fe3caf607');
+  const map = useRef<L.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const markersRef = useRef<any[]>([]);
-  const userMarkerRef = useRef<any>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
-  // Load Mappls script
+  // Initialize Leaflet map
   useEffect(() => {
-    if (!apiKey) return;
+    if (!mapContainer.current || !userLocation || mapReady) return;
 
-    // Clean up any existing script
-    const existingScript = document.querySelector('script[src*="apis.mappls.com"]');
-    if (existingScript) {
-      existingScript.remove();
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://apis.mappls.com/advancedmaps/api/${apiKey}/map_sdk?layer=vector&v=3.0&callback=initializeMap`;
-    script.async = true;
-    
-    // Define callback function
-    window.initializeMap = () => {
-      console.log('Mappls SDK loaded successfully');
-      setMapLoaded(true);
-    };
-
-    script.onerror = () => {
-      console.error('Failed to load Mappls SDK');
-      setMapLoaded(false);
-    };
-
-    document.head.appendChild(script);
-
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-      delete window.initializeMap;
-    };
-  }, [apiKey]);
-
-  // Initialize map only after script is loaded and user location is available
-  useEffect(() => {
-    if (!mapContainer.current || !userLocation || !mapLoaded || !window.mappls || mapReady) return;
-
-    console.log('Initializing Mappls map with user location:', userLocation);
+    console.log('Initializing Leaflet map with user location:', userLocation);
 
     try {
-      // Wait a bit to ensure DOM is ready
-      setTimeout(() => {
-        if (!mapContainer.current) return;
+      // Initialize Leaflet map
+      map.current = L.map(mapContainer.current).setView([userLocation.lat, userLocation.lng], 13);
 
-        // Initialize Mappls map
-        map.current = new window.mappls.Map(mapContainer.current, {
-          center: [userLocation.lat, userLocation.lng],
-          zoom: 13,
-          zoomControl: true,
-          scrollWheel: true,
-          disableDoubleClickZoom: false,
-          draggable: true
-        });
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map.current);
 
-        // Wait for map to be ready
-        map.current.on('load', () => {
-          console.log('Map loaded and ready');
-          setMapReady(true);
-          
-          // Add user location marker after map is ready
-          addUserMarker();
-        });
+      console.log('Leaflet map initialized successfully');
+      setMapReady(true);
+      
+      // Add user location marker
+      addUserMarker();
 
-      }, 100);
     } catch (error) {
-      console.error('Error initializing Mappls map:', error);
+      console.error('Error initializing Leaflet map:', error);
     }
 
     return () => {
       if (map.current) {
+        map.current.remove();
         map.current = null;
         setMapReady(false);
       }
     };
-  }, [userLocation, mapLoaded]);
+  }, [userLocation]);
 
   // Add user location marker
   const addUserMarker = () => {
-    if (!map.current || !userLocation || !window.mappls) return;
+    if (!map.current || !userLocation) return;
 
     try {
-      const userMarkerDiv = document.createElement('div');
-      userMarkerDiv.innerHTML = `
-        <div style="
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          border: 4px solid #3b82f6;
-          background-color: white;
-          position: relative;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        ">
+      // Create custom user location icon
+      const userIcon = L.divIcon({
+        className: 'user-location-marker',
+        html: `
           <div style="
-            width: 10px;
-            height: 10px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            background-color: #3b82f6;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-          "></div>
-        </div>
-      `;
-
-      userMarkerRef.current = new window.mappls.Marker({
-        map: map.current,
-        position: [userLocation.lat, userLocation.lng],
-        icon: userMarkerDiv,
-        title: 'Your Location'
+            border: 4px solid #3b82f6;
+            background-color: white;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+          ">
+            <div style="
+              width: 10px;
+              height: 10px;
+              border-radius: 50%;
+              background-color: #3b82f6;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+            "></div>
+          </div>
+        `,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
       });
 
+      userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { 
+        icon: userIcon 
+      }).addTo(map.current);
+
+      userMarkerRef.current.bindPopup('Your Location');
       console.log('User marker added successfully');
     } catch (error) {
       console.error('Error adding user marker:', error);
     }
   };
 
-  // Add food item markers only after map is ready
+  // Add food item markers
   useEffect(() => {
-    if (!map.current || !items || items.length === 0 || !window.mappls || !mapReady) {
+    if (!map.current || !items || items.length === 0 || !mapReady) {
       console.log('Map not ready or no items to display');
       return;
     }
@@ -176,9 +134,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     try {
       // Clear existing food markers
       markersRef.current.forEach(marker => {
-        if (marker && marker.setMap) {
-          marker.setMap(null);
-        }
+        map.current?.removeLayer(marker);
       });
       markersRef.current = [];
 
@@ -197,27 +153,27 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
 
         // Create custom marker icon
-        const markerDiv = document.createElement('div');
-        markerDiv.innerHTML = createMarkerIcon(item);
-        
-        const marker = new window.mappls.Marker({
-          map: map.current,
-          position: [item.location.lat, item.location.lng],
-          icon: markerDiv,
-          title: item.title
+        const markerIcon = L.divIcon({
+          className: 'food-marker',
+          html: createMarkerIcon(item),
+          iconSize: [44, 44],
+          iconAnchor: [22, 22]
         });
+        
+        const marker = L.marker([item.location.lat, item.location.lng], { 
+          icon: markerIcon 
+        }).addTo(map.current!);
 
         // Create and bind popup
         const popupContent = createPopupContent(item);
-        const infoWindow = new window.mappls.InfoWindow({
-          content: popupContent,
-          maxWidth: 300
+        marker.bindPopup(popupContent, {
+          maxWidth: 300,
+          className: 'food-popup'
         });
         
         // Add click event
-        marker.addListener('click', () => {
+        marker.on('click', () => {
           console.log('Marker clicked:', item.title);
-          infoWindow.open(map.current, marker);
           onItemClick(item);
         });
 
@@ -228,7 +184,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       if (items.length > 0 && userLocation) {
         setTimeout(() => {
           try {
-            const bounds = new window.mappls.LatLngBounds();
+            const bounds = L.latLngBounds([]);
             
             // Add user location to bounds
             bounds.extend([userLocation.lat, userLocation.lng]);
@@ -240,8 +196,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               }
             });
             
-            map.current.fitBounds(bounds, {
-              padding: 50,
+            map.current?.fitBounds(bounds, {
+              padding: [50, 50],
               maxZoom: 15
             });
           } catch (error) {
@@ -261,13 +217,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
       
       {/* Loading indicator */}
-      {(!mapLoaded || !mapReady) && (
+      {!mapReady && userLocation && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-            <p className="text-gray-600">
-              {!mapLoaded ? 'Loading Mappls SDK...' : 'Initializing map...'}
-            </p>
+            <p className="text-gray-600">Initializing map...</p>
           </div>
         </div>
       )}
@@ -279,9 +233,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         </div>
       )}
 
-      {/* API Key Info */}
-      <div className="absolute top-4 right-4 bg-blue-50/90 backdrop-blur-sm p-2 rounded-lg shadow-md">
-        <p className="text-xs text-blue-600">Using demo API key</p>
+      {/* Map Provider Info */}
+      <div className="absolute top-4 right-4 bg-green-50/90 backdrop-blur-sm p-2 rounded-lg shadow-md">
+        <p className="text-xs text-green-600">Leaflet + OpenStreetMap</p>
       </div>
     </div>
   );

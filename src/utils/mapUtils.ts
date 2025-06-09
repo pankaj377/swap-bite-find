@@ -74,40 +74,42 @@ export const createMarkerIcon = (item: any): string => {
 
 export const createPopupContent = (item: any): string => {
   const expiryInfo = item.expire_date 
-    ? `<div class="text-xs text-orange-600 font-medium mt-2 p-2 bg-orange-50 rounded">⏰ Expires: ${new Date(item.expire_date).toLocaleDateString()}</div>`
+    ? `<div style="font-size: 12px; color: #ea580c; font-weight: 500; margin-top: 8px; padding: 8px; background-color: #fed7aa; border-radius: 6px;">⏰ Expires: ${new Date(item.expire_date).toLocaleDateString()}</div>`
     : '';
 
   return `
-    <div class="p-4 max-w-xs">
-      <div class="relative mb-3">
-        <img src="${item.image}" alt="${item.title}" class="w-full h-32 object-cover rounded-lg" />
-        <div class="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded-full text-xs font-medium" style="color: ${getCategoryColor(item.category)}">
+    <div style="padding: 16px; max-width: 280px; font-family: system-ui, -apple-system, sans-serif;">
+      <div style="position: relative; margin-bottom: 12px;">
+        <img src="${item.image}" alt="${item.title}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;" />
+        <div style="position: absolute; top: 8px; right: 8px; background-color: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; color: ${getCategoryColor(item.category)};">
           ${item.category}
         </div>
       </div>
       
-      <h3 class="font-bold text-lg mb-2 text-gray-800">${item.title}</h3>
-      <p class="text-gray-600 text-sm mb-3 leading-relaxed">${item.description}</p>
+      <h3 style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: #1f2937;">${item.title}</h3>
+      <p style="color: #6b7280; font-size: 14px; margin-bottom: 12px; line-height: 1.5;">${item.description}</p>
       
       ${expiryInfo}
       
-      <div class="border-t pt-3 mt-3">
-        <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
-          <span class="flex items-center">
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+          <span style="display: flex; align-items: center;">
             👤 ${item.user.name}
           </span>
           <span>${item.postedAt}</span>
         </div>
         
-        <div class="text-xs text-gray-500 flex items-center">
+        <div style="font-size: 12px; color: #6b7280; display: flex; align-items: center;">
           📍 ${item.location.address}
         </div>
       </div>
       
-      <div class="mt-3 pt-3 border-t">
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
         <button 
           onclick="window.open('https://www.google.com/maps/dir//${item.location.lat},${item.location.lng}', '_blank')"
-          class="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          style="width: 100%; background-color: #10b981; color: white; padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: background-color 0.2s;"
+          onmouseover="this.style.backgroundColor='#059669'"
+          onmouseout="this.style.backgroundColor='#10b981'"
         >
           🗺️ Get Directions
         </button>
