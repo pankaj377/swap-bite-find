@@ -88,7 +88,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
         // Create popup content with enhanced mobile support
         const popupContent = createPopupContent(item, () => handleGetDirections(item));
         
-        // Bind popup with optimized settings for mobile
+        // Bind popup with optimized settings for proper positioning
         marker.bindPopup(popupContent, {
           maxWidth: 300,
           minWidth: 280,
@@ -97,14 +97,24 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
           autoPan: true,
           autoPanPadding: [20, 20],
           keepInView: true,
-          closeOnClick: false
+          closeOnClick: false,
+          offset: [0, -10], // Offset to position popup above marker
+          autoPanPaddingBottomRight: [20, 20],
+          autoPanPaddingTopLeft: [20, 20]
         });
         
         // Enhanced event handling for mobile and desktop
         marker.on('click', (e: L.LeafletMouseEvent) => {
           console.log('Marker clicked:', item.title);
-          marker.openPopup();
+          
+          // Ensure popup opens properly positioned
+          setTimeout(() => {
+            marker.openPopup();
+          }, 50);
+          
           onItemClick(item);
+          
+          // Prevent event bubbling
           if (e.originalEvent) {
             e.originalEvent.stopPropagation();
           }
@@ -115,13 +125,25 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
           console.log('Marker touched:', item.title);
           setTimeout(() => {
             marker.openPopup();
-          }, 50);
+          }, 100);
         });
 
-        // Handle popup open events
-        marker.on('popupopen', () => {
+        // Handle popup open events with proper positioning
+        marker.on('popupopen', (e) => {
           console.log('Popup opened for:', item.title);
           
+          // Ensure popup is properly positioned within map bounds
+          const popup = e.popup;
+          if (popup) {
+            setTimeout(() => {
+              map.panIntoView(popup.getLatLng(), {
+                paddingTopLeft: [20, 20],
+                paddingBottomRight: [20, 20]
+              });
+            }, 100);
+          }
+          
+          // Setup directions button click handler
           const directionsBtn = document.querySelector(`#directions-btn-${item.id}`);
           if (directionsBtn) {
             directionsBtn.addEventListener('click', (e) => {
