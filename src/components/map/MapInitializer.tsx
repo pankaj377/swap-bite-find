@@ -25,8 +25,8 @@ export const MapInitializer: React.FC<MapInitializerProps> = ({
   useEffect(() => {
     if (!mapContainer.current || !userLocation) return;
 
-    // Check if map is already initialized
-    if (mapContainer.current._leaflet_id) {
+    // Check if map is already initialized using proper type casting
+    if ((mapContainer.current as any)._leaflet_id) {
       console.log('Map container already has a map, skipping initialization');
       return;
     }
