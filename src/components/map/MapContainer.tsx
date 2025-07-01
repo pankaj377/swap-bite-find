@@ -52,7 +52,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     try {
       // Initialize Leaflet map with mobile-optimized settings
       map.current = L.map(mapContainer.current, {
-        tap: true,
         touchZoom: true,
         dragging: true,
         zoomControl: true,
@@ -183,16 +182,16 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         });
         
         // Add both click and tap events for mobile compatibility
-        marker.on('click tap', (e) => {
-          console.log('Marker clicked/tapped:', item.title);
+        marker.on('click', (e: L.LeafletMouseEvent) => {
+          console.log('Marker clicked:', item.title);
           // Ensure popup opens on mobile
           marker.openPopup();
           onItemClick(item);
-          e.originalEvent?.stopPropagation();
+          e.originalEvent.stopPropagation();
         });
 
         // Add touch-specific event for better mobile support
-        marker.on('touchstart', (e) => {
+        marker.on('touchstart', () => {
           console.log('Marker touched:', item.title);
           setTimeout(() => {
             marker.openPopup();
@@ -239,42 +238,44 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
       
       {/* Mobile-specific styles */}
-      <style jsx global>{`
-        .mobile-popup .leaflet-popup-content {
-          margin: 12px 16px !important;
-          line-height: 1.4 !important;
-          font-size: 14px !important;
-        }
-        
-        .mobile-popup .leaflet-popup-content-wrapper {
-          border-radius: 12px !important;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
-        }
-        
-        .mobile-popup .leaflet-popup-tip {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-        }
-        
-        .food-marker {
-          cursor: pointer !important;
-          -webkit-tap-highlight-color: transparent !important;
-        }
-        
-        .food-marker:hover {
-          transform: scale(1.1) !important;
-          transition: transform 0.2s ease !important;
-        }
-        
-        @media (max-width: 768px) {
-          .mobile-popup {
-            max-width: 90vw !important;
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .mobile-popup .leaflet-popup-content {
+            margin: 12px 16px !important;
+            line-height: 1.4 !important;
+            font-size: 14px !important;
           }
           
-          .mobile-popup .leaflet-popup-content {
-            max-width: calc(90vw - 32px) !important;
+          .mobile-popup .leaflet-popup-content-wrapper {
+            border-radius: 12px !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
           }
-        }
-      `}</style>
+          
+          .mobile-popup .leaflet-popup-tip {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+          }
+          
+          .food-marker {
+            cursor: pointer !important;
+            -webkit-tap-highlight-color: transparent !important;
+          }
+          
+          .food-marker:hover {
+            transform: scale(1.1) !important;
+            transition: transform 0.2s ease !important;
+          }
+          
+          @media (max-width: 768px) {
+            .mobile-popup {
+              max-width: 90vw !important;
+            }
+            
+            .mobile-popup .leaflet-popup-content {
+              max-width: calc(90vw - 32px) !important;
+            }
+          }
+        `
+      }} />
       
       {/* Loading indicator */}
       {!mapReady && userLocation && (
