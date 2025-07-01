@@ -25,6 +25,12 @@ export const MapInitializer: React.FC<MapInitializerProps> = ({
   useEffect(() => {
     if (!mapContainer.current || !userLocation) return;
 
+    // Check if map is already initialized
+    if (mapContainer.current._leaflet_id) {
+      console.log('Map container already has a map, skipping initialization');
+      return;
+    }
+
     console.log('Initializing Leaflet map with user location:', userLocation);
 
     try {
@@ -50,10 +56,6 @@ export const MapInitializer: React.FC<MapInitializerProps> = ({
     } catch (error) {
       console.error('Error initializing Leaflet map:', error);
     }
-
-    return () => {
-      // Cleanup will be handled by parent component
-    };
   }, [mapContainer, userLocation, onMapReady]);
 
   return null;

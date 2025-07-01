@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import { MapInitializer } from './MapInitializer';
 import { MapUserLocation } from './MapUserLocation';
@@ -35,15 +35,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const [map, setMap] = useState<L.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
-  const handleMapReady = (mapInstance: L.Map) => {
+  const handleMapReady = useCallback((mapInstance: L.Map) => {
+    console.log('Map ready callback called');
     setMap(mapInstance);
     setMapReady(true);
-  };
+  }, []);
 
   // Cleanup map on unmount
   React.useEffect(() => {
     return () => {
       if (map) {
+        console.log('Cleaning up map on unmount');
         map.remove();
         setMap(null);
         setMapReady(false);
@@ -61,17 +63,21 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         onMapReady={handleMapReady}
       />
       
-      <MapUserLocation
-        map={map}
-        userLocation={userLocation}
-      />
-      
-      <MapMarkers
-        map={map}
-        items={items}
-        userLocation={userLocation}
-        onItemClick={onItemClick}
-      />
+      {mapReady && (
+        <>
+          <MapUserLocation
+            map={map}
+            userLocation={userLocation}
+          />
+          
+          <MapMarkers
+            map={map}
+            items={items}
+            userLocation={userLocation}
+            onItemClick={onItemClick}
+          />
+        </>
+      )}
       
       <MapStyles />
       
