@@ -132,13 +132,14 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
         marker.on('popupopen', (e) => {
           console.log('Popup opened for:', item.title);
           
-          // Ensure popup is properly positioned within map bounds
+          // Use correct Leaflet method to pan to marker location
           const popup = e.popup;
           if (popup) {
             setTimeout(() => {
-              map.panIntoView(popup.getLatLng(), {
-                paddingTopLeft: [20, 20],
-                paddingBottomRight: [20, 20]
+              const markerLatLng = marker.getLatLng();
+              map.panTo(markerLatLng, {
+                animate: true,
+                duration: 0.5
               });
             }, 100);
           }
