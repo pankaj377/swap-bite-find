@@ -55,7 +55,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         touchZoom: true,
         dragging: true,
         zoomControl: true,
-        scrollWheelZoom: false
+        scrollWheelZoom: false,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: true
       }).setView([userLocation.lat, userLocation.lng], 13);
 
       // Add OpenStreetMap tiles
@@ -127,6 +130,18 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   };
 
+  // Handle directions to food item
+  const handleGetDirections = (item: FoodItem) => {
+    if (!userLocation) {
+      console.warn('User location not available for directions');
+      return;
+    }
+
+    const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${item.location.lat},${item.location.lng}`;
+    console.log('Opening directions:', url);
+    window.open(url, '_blank');
+  };
+
   // Add food item markers
   useEffect(() => {
     if (!map.current || !items || items.length === 0 || !mapReady) {
@@ -169,33 +184,55 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           icon: markerIcon 
         }).addTo(map.current!);
 
-        // Create and bind popup with mobile-optimized settings
-        const popupContent = createPopupContent(item);
+        // Create popup content with enhanced mobile support
+        const popupContent = createPopupContent(item, () => handleGetDirections(item));
+        
+        // Bind popup with optimized settings for mobile
         marker.bindPopup(popupContent, {
-          maxWidth: 280,
-          minWidth: 250,
-          className: 'food-popup mobile-popup',
+          maxWidth: 300,
+          minWidth: 280,
+          className: 'food-popup mobile-optimized-popup',
           closeButton: true,
           autoPan: true,
           autoPanPadding: [20, 20],
-          keepInView: true
+          keepInView: true,
+          closeOnClick: false
         });
         
-        // Add both click and tap events for mobile compatibility
+        // Enhanced event handling for mobile and desktop
         marker.on('click', (e: L.LeafletMouseEvent) => {
           console.log('Marker clicked:', item.title);
-          // Ensure popup opens on mobile
+          // Force popup to open
           marker.openPopup();
           onItemClick(item);
-          e.originalEvent.stopPropagation();
+          // Prevent event bubbling
+          if (e.originalEvent) {
+            e.originalEvent.stopPropagation();
+          }
         });
 
-        // Add touch-specific event for better mobile support
+        // Additional mobile touch support
         marker.on('touchstart', () => {
           console.log('Marker touched:', item.title);
+          // Small delay to ensure touch is registered
           setTimeout(() => {
             marker.openPopup();
-          }, 100);
+          }, 50);
+        });
+
+        // Handle popup open events
+        marker.on('popupopen', () => {
+          console.log('Popup opened for:', item.title);
+          
+          // Ensure directions button works
+          const directionsBtn = document.querySelector(`#directions-btn-${item.id}`);
+          if (directionsBtn) {
+            directionsBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleGetDirections(item);
+            });
+          }
         });
 
         markersRef.current.push(marker);
@@ -231,47 +268,86 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     } catch (error) {
       console.error('Error adding food markers:', error);
     }
-  }, [items, onItemClick, mapReady]);
+  }, [items, onItemClick, mapReady, userLocation]);
 
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
       
-      {/* Mobile-specific styles */}
+      {/* Enhanced mobile-specific styles */}
       <style dangerouslySetInnerHTML={{
         __html: `
-          .mobile-popup .leaflet-popup-content {
-            margin: 12px 16px !important;
-            line-height: 1.4 !important;
+          .mobile-optimized-popup .leaflet-popup-content {
+            margin: 16px !important;
+            line-height: 1.5 !important;
             font-size: 14px !important;
+            max-width: 280px !important;
           }
           
-          .mobile-popup .leaflet-popup-content-wrapper {
+          .mobile-optimized-popup .leaflet-popup-content-wrapper {
             border-radius: 12px !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25) !important;
+            background: white !important;
           }
           
-          .mobile-popup .leaflet-popup-tip {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+          .mobile-optimized-popup .leaflet-popup-tip {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
           }
           
           .food-marker {
             cursor: pointer !important;
             -webkit-tap-highlight-color: transparent !important;
-          }
-          
-          .food-marker:hover {
-            transform: scale(1.1) !important;
             transition: transform 0.2s ease !important;
           }
           
+          .food-marker:hover,
+          .food-marker:active {
+            transform: scale(1.1) !important;
+          }
+          
+          .directions-button {
+            width: 100% !important;
+            padding: 12px !important;
+            background-color: #10b981 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            transition: background-color 0.2s !important;
+            -webkit-tap-highlight-color: transparent !important;
+            touch-action: manipulation !important;
+          }
+          
+          .directions-button:hover,
+          .directions-button:active {
+            background-color: #059669 !important;
+          }
+          
           @media (max-width: 768px) {
-            .mobile-popup {
+            .mobile-optimized-popup {
               max-width: 90vw !important;
             }
             
-            .mobile-popup .leaflet-popup-content {
+            .mobile-optimized-popup .leaflet-popup-content {
               max-width: calc(90vw - 32px) !important;
+              margin: 12px !important;
+            }
+            
+            .directions-button {
+              font-size: 16px !important;
+              padding: 14px !important;
+            }
+          }
+          
+          /* Fix for touch devices */
+          @media (pointer: coarse) {
+            .leaflet-popup-close-button {
+              width: 30px !important;
+              height: 30px !important;
+              font-size: 20px !important;
+              line-height: 30px !important;
             }
           }
         `
