@@ -58,16 +58,16 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
         );
         
         console.log(`Distance to ${item.title}: ${distance.toFixed(2)}km`);
-        return distance <= 25; // Increased to 25km radius for better coverage
+        return distance <= 1000; // Increased to 1000km radius to show more items
       });
       
-      console.log(`Found ${nearby.length} food items within 25km`);
+      console.log(`Found ${nearby.length} food items within 1000km`);
       setNearbyItems(nearby);
       
       if (nearby.length > 0) {
-        toast.success(`Found ${nearby.length} food items within 25km of your location`);
+        toast.success(`Found ${nearby.length} food items near your location`);
       } else {
-        toast.info('No food items found within 25km. Try expanding your search area.');
+        toast.info('No food items found in your area.');
       }
     } else if (userLocation && items.length === 0) {
       console.log('User location available but no items to display');
