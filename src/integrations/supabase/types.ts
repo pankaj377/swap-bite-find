@@ -244,7 +244,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_otp: {
+        Args: { p_otp_code: string; p_phone_number: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
