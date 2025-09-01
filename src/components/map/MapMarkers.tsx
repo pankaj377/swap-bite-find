@@ -158,24 +158,31 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
         markersRef.current.push(marker);
       });
 
-      // Fit map to show all markers including user location
-      if (items.length > 0 && userLocation) {
+      // Fit map to show all markers (with or without user location)
+      if (items.length > 0) {
         setTimeout(() => {
           try {
             const bounds = L.latLngBounds([]);
             
-            bounds.extend([userLocation.lat, userLocation.lng]);
+            // Add user location to bounds if available
+            if (userLocation) {
+              bounds.extend([userLocation.lat, userLocation.lng]);
+            }
             
+            // Add all food item locations to bounds
             items.forEach(item => {
               if (item.location && !isNaN(item.location.lat) && !isNaN(item.location.lng)) {
                 bounds.extend([item.location.lat, item.location.lng]);
               }
             });
             
-            map.fitBounds(bounds, {
-              padding: [50, 50],
-              maxZoom: 15
-            });
+            // Only fit bounds if we have valid bounds
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, {
+                padding: [50, 50],
+                maxZoom: userLocation ? 15 : 10 // Use lower max zoom when no user location
+              });
+            }
           } catch (error) {
             console.error('Error fitting bounds:', error);
           }

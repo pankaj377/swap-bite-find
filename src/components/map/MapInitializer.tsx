@@ -23,7 +23,7 @@ export const MapInitializer: React.FC<MapInitializerProps> = ({
   onMapReady
 }) => {
   useEffect(() => {
-    if (!mapContainer.current || !userLocation) return;
+    if (!mapContainer.current) return;
 
     // Check if map is already initialized using proper type casting
     if ((mapContainer.current as any)._leaflet_id) {
@@ -31,7 +31,12 @@ export const MapInitializer: React.FC<MapInitializerProps> = ({
       return;
     }
 
-    console.log('Initializing Leaflet map with user location:', userLocation);
+    // Use user location or default to a central location
+    const defaultLocation = { lat: 23.2599, lng: 77.4126 }; // Default to Bhopal, India
+    const mapCenter = userLocation || defaultLocation;
+    const initialZoom = userLocation ? 13 : 6; // Wider zoom if no user location
+    
+    console.log('Initializing Leaflet map with center:', mapCenter, 'User location available:', !!userLocation);
 
     try {
       // Initialize Leaflet map with mobile-optimized settings
@@ -43,7 +48,7 @@ export const MapInitializer: React.FC<MapInitializerProps> = ({
         doubleClickZoom: true,
         boxZoom: true,
         keyboard: true
-      }).setView([userLocation.lat, userLocation.lng], 13);
+      }).setView([mapCenter.lat, mapCenter.lng], initialZoom);
 
       // Add OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

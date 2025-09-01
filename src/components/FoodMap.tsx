@@ -96,30 +96,28 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
     onItemClick(item);
   };
 
-  if (!userLocation) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-          <span className="text-2xl">📍</span>
-        </div>
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Location Required
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 max-w-sm">
-          Please allow location access in your browser to view the food map and find items near you.
-        </p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-        >
-          Retry Location Detection
-        </button>
-      </div>
-    );
-  }
+  // Show map even without user location, with appropriate messaging
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden">
+      {/* Location status banner */}
+      {!userLocation && (
+        <div className="absolute top-4 left-4 right-4 z-[1000] bg-blue-50 dark:bg-blue-900/90 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-blue-600 dark:text-blue-300">📍</span>
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              Location not available - showing all food items
+            </p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="ml-auto text-blue-600 dark:text-blue-300 text-xs underline hover:no-underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      
       <MapContainer
         items={nearbyItems}
         userLocation={userLocation}
