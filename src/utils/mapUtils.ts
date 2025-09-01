@@ -25,59 +25,7 @@ export const getCategoryColor = (category: string): string => {
   return colors[category as keyof typeof colors] || '#6b7280';
 };
 
-export const createMarkerIcon = (item: any): string => {
-  const color = getCategoryColor(item.category);
-  
-  return `
-    <div class="food-marker" style="
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: 3px solid white;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-      cursor: pointer;
-      background-image: url(${item.image});
-      background-size: cover;
-      background-position: center;
-      background-color: ${color};
-      position: relative;
-      transition: transform 0.2s ease;
-      -webkit-tap-highlight-color: transparent;
-    " 
-    ontouchstart="this.style.transform='scale(1.1)'" 
-    ontouchend="this.style.transform='scale(1)'" 
-    onmouseover="this.style.transform='scale(1.1)'" 
-    onmouseout="this.style.transform='scale(1)'">
-      <div style="
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        width: 16px;
-        height: 16px;
-        background-color: ${color};
-        border: 2px solid white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 8px;
-        color: white;
-        font-weight: bold;
-      ">
-        ${item.category === 'vegetables' ? '🥬' : 
-          item.category === 'fruits' ? '🍎' : 
-          item.category === 'baked' ? '🍞' : 
-          item.category === 'desserts' ? '🧁' : 
-          item.category === 'meals' ? '🍽️' : 
-          item.category === 'dairy' ? '🥛' : 
-          item.category === 'snacks' ? '🍿' : 
-          item.category === 'beverages' ? '🥤' : '🍴'}
-      </div>
-    </div>
-  `;
-};
-
-export const createPopupContent = (item: any, onGetDirections?: () => void): string => {
+export const createPopupContent = (item: any): string => {
   const expiryInfo = item.expire_date 
     ? `<div style="font-size: 12px; color: #ea580c; font-weight: 500; margin-top: 8px; padding: 8px; background-color: #fed7aa; border-radius: 6px;">⏰ Expires: ${new Date(item.expire_date).toLocaleDateString()}</div>`
     : '';
@@ -111,14 +59,10 @@ export const createPopupContent = (item: any, onGetDirections?: () => void): str
       
       <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
         <button 
-          id="directions-btn-${item.id}"
-          class="directions-button"
-          style="width: 100%; background-color: #10b981; color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: background-color 0.2s; -webkit-tap-highlight-color: transparent; touch-action: manipulation;"
-          ontouchstart="this.style.backgroundColor='#059669'"
-          ontouchend="this.style.backgroundColor='#10b981'"
+          onclick="window.open('https://www.google.com/maps/dir//${item.location.lat},${item.location.lng}', '_blank')"
+          style="width: 100%; background-color: #10b981; color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: background-color 0.2s;"
           onmouseover="this.style.backgroundColor='#059669'"
           onmouseout="this.style.backgroundColor='#10b981'"
-          onclick="window.open('https://www.google.com/maps/dir//${item.location.lat},${item.location.lng}', '_blank')"
         >
           🗺️ Get Directions to Food Sharer
         </button>

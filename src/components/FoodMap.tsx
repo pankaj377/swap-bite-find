@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { MapContainer } from '@/components/map/MapContainer';
+import { MapboxMap } from '@/components/map/MapboxMap';
 import { MapItemInfo } from '@/components/map/MapItemInfo';
 import { MapStats } from '@/components/map/MapStats';
 import { calculateDistance } from '@/utils/mapUtils';
@@ -118,7 +118,7 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
         </div>
       )}
       
-      <MapContainer
+      <MapboxMap
         items={nearbyItems}
         userLocation={userLocation}
         onItemClick={handleItemClick}
