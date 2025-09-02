@@ -17,6 +17,7 @@ interface FoodItem {
   postedAt: string;
   likes: number;
   isLiked: boolean;
+  expireDate?: string;
   expire_date?: string;
 }
 
@@ -30,7 +31,7 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
   const [selectedItem, setSelectedItem] = useState<FoodItem | null>(null);
   const [nearbyItems, setNearbyItems] = useState<FoodItem[]>([]);
 
-  // Filter items within 25km radius when userLocation or items change
+  // Filter out expired items and items within radius when userLocation or items change
   useEffect(() => {
     console.log('FoodMap: Processing items', { 
       itemsCount: items.length, 
@@ -38,8 +39,23 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
       sampleItem: items[0] 
     });
 
-    if (userLocation && items.length > 0) {
-      const nearby = items.filter(item => {
+    // First filter out expired items
+    const now = new Date();
+    const nonExpiredItems = items.filter(item => {
+      if (!item.expireDate && !item.expire_date) return true; // No expiry date
+      
+      const expireDate = item.expireDate || item.expire_date;
+      const itemExpiry = new Date(expireDate);
+      
+      if (itemExpiry <= now) {
+        console.log(`Filtering out expired item: ${item.title} (expired: ${expireDate})`);
+        return false;
+      }
+      return true;
+    });
+
+    if (userLocation && nonExpiredItems.length > 0) {
+      const nearby = nonExpiredItems.filter(item => {
         // Validate item location data
         if (!item.location || 
             typeof item.location.lat !== 'number' || 
@@ -61,21 +77,27 @@ export const FoodMap: React.FC<FoodMapProps> = ({ items, userLocation, onItemCli
         return distance <= 1000; // Increased to 1000km radius to show more items
       });
       
-      console.log(`Found ${nearby.length} food items within 1000km`);
+      console.log(`Found ${nearby.length} non-expired food items within 1000km`);
       setNearbyItems(nearby);
       
       if (nearby.length > 0) {
-        toast.success(`Found ${nearby.length} food items near your location`);
+        toast.success(`Found ${nearby.length} fresh food items near your location`);
       } else {
-        toast.info('No food items found in your area.');
+        toast.info('No fresh food items found in your area.');
       }
-    } else if (userLocation && items.length === 0) {
-      console.log('User location available but no items to display');
+    } else if (userLocation && nonExpiredItems.length === 0) {
+      console.log('User location available but no non-expired items to display');
       setNearbyItems([]);
-      toast.info('No food items available in your area yet.');
+      toast.info('No fresh food items available in your area yet.');
     } else {
-      console.log('No user location or items available');
-      setNearbyItems(items); // Show all items if no location
+      console.log('No user location, showing all non-expired items');
+      setNearbyItems(nonExpiredItems); // Show all non-expired items if no location
+    }
+
+    // Show notification if expired items were filtered out
+    const expiredCount = items.length - nonExpiredItems.length;
+    if (expiredCount > 0) {
+      toast.info(`${expiredCount} expired food item${expiredCount > 1 ? 's' : ''} automatically removed`);
     }
   }, [items, userLocation]);
 

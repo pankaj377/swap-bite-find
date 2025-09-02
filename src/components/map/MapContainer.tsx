@@ -14,6 +14,7 @@ interface FoodItem {
   likes: number;
   isLiked: boolean;
   expireDate?: string;
+  expire_date?: string;
 }
 
 interface MapContainerProps {
@@ -76,6 +77,17 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     });
     markersRef.current = [];
 
+    // Filter out expired items before displaying
+    const now = new Date();
+    const validItems = items.filter(item => {
+      if (!item.expireDate && !item.expire_date) return true; // No expiry date
+      
+      const expireDate = item.expireDate || item.expire_date;
+      const itemExpiry = new Date(expireDate);
+      
+      return itemExpiry > now; // Only show non-expired items
+    });
+
     // Add user location marker
     if (userLocation && mapRef.current) {
       const userIcon = L.divIcon({
@@ -107,8 +119,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       markersRef.current.push(userMarker);
     }
 
-    // Add food item markers
-    items.forEach(item => {
+    // Add food item markers (only valid non-expired items)
+    validItems.forEach(item => {
       if (!item.location || !mapRef.current) return;
 
       const foodIcon = L.divIcon({
@@ -264,8 +276,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       markersRef.current.push(marker);
     });
 
-    // Fit bounds to show all markers if items exist
-    if (items.length > 0 && mapRef.current) {
+    // Fit bounds to show all markers if valid items exist
+    if (validItems.length > 0 && mapRef.current) {
       const group = new L.FeatureGroup(markersRef.current);
       const bounds = group.getBounds();
       
@@ -280,7 +292,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     // Setup global actions for popup buttons
     (window as any).foodMapActions = {
       viewItem: (itemId: string) => {
-        const item = items.find(i => i.id === itemId);
+        const item = validItems.find(i => i.id === itemId);
         if (item) {
           onItemClick(item);
         }

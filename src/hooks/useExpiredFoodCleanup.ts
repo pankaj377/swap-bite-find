@@ -57,8 +57,8 @@ export const useExpiredFoodCleanup = () => {
     // Run cleanup immediately
     cleanupExpiredItems();
 
-    // Set up interval to run cleanup every hour
-    const interval = setInterval(cleanupExpiredItems, 60 * 60 * 1000);
+    // Set up interval to run cleanup every 15 minutes for more responsive removal
+    const interval = setInterval(cleanupExpiredItems, 15 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, []);
