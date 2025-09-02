@@ -149,6 +149,26 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         icon: foodIcon,
       }).addTo(mapRef.current);
 
+      // Calculate distance if user location is available
+      const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371; // Radius of the Earth in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      };
+
+      const distance = userLocation ? calculateDistance(
+        userLocation.lat,
+        userLocation.lng,
+        item.location.lat,
+        item.location.lng
+      ) : null;
+
       // Create popup content
       const popupContent = `
         <div class="food-popup" style="min-width: 250px; max-width: 300px;">
@@ -228,6 +248,21 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               </div>
             ` : ''}
             
+            ${distance ? `
+              <div style="
+                font-size: 12px;
+                color: #059669;
+                margin-bottom: 8px;
+                padding: 6px 8px;
+                background: #d1fae5;
+                border-radius: 4px;
+                font-weight: 500;
+                text-align: center;
+              ">
+                📍 ${distance.toFixed(2)} km away
+              </div>
+            ` : ''}
+            
             <div style="display: flex; gap: 8px; margin-top: 12px;">
               <button 
                 onclick="window.foodMapActions?.viewItem('${item.id}')"
@@ -247,7 +282,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               </button>
               ${userLocation ? `
                 <button 
-                  onclick="window.foodMapActions?.getDirections('${item.location.lat}', '${item.location.lng}')"
+                  onclick="window.foodMapActions?.getDirections('${item.location.lat}', '${item.location.lng}', '${item.title}')"
                   style="
                     flex: 1;
                     background: #10b981;
@@ -260,7 +295,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                     cursor: pointer;
                   "
                 >
-                  Directions
+                  Get Directions
                 </button>
               ` : ''}
             </div>
@@ -297,10 +332,34 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           onItemClick(item);
         }
       },
-      getDirections: (lat: string, lng: string) => {
+      getDirections: (lat: string, lng: string, title: string) => {
         if (userLocation) {
-          const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${lat},${lng}`;
-          window.open(url, '_blank');
+          // Calculate distance using the same function as in popup
+          const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+              Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+          };
+
+          const distance = calculateDistance(
+            userLocation.lat, 
+            userLocation.lng, 
+            parseFloat(lat), 
+            parseFloat(lng)
+          );
+          
+          // Show distance info before opening directions
+          const message = `Shortest distance to "${title}": ${distance.toFixed(2)} km`;
+          if (window.confirm(`${message}\n\nOpen directions in Google Maps?`)) {
+            const url = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${lat},${lng}`;
+            window.open(url, '_blank');
+          }
         }
       },
     };
